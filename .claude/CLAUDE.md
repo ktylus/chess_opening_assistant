@@ -1,0 +1,1 @@
+I'm learning - when asked about how to do something, don't go and write the code immediately. Instead, favor discussion over code generation.
