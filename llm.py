@@ -1,34 +1,34 @@
 import os
 
-import anthropic
-from anthropic import Anthropic
 from dotenv import load_dotenv
+from langchain_core.messages import BaseMessage
+from langchain.messages import HumanMessage, SystemMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-BASE_SYSTEM_PROMPT = """
-    You are a helpful assistant aiding in learning chess openings.
-"""
-MODEL = "claude-sonnet-4-6"
+MODEL = "gemini-3.1-flash-lite"
 
 load_dotenv()
 
+
+client = ChatGoogleGenerativeAI(model=MODEL)
+
 with open("data/wiki_articles/Sicilian_Defence.md") as f:
     doc = f.read()
-
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-
-history = []
+system_prompt = (
+    """
+    You are a helpful assistant aiding in learning chess openings.
+"""
+    + doc
+)
+messages: list[BaseMessage] = [SystemMessage(system_prompt)]
 while True:
     user_input = input("> ")
-    history.append({"role": "user", "content": user_input})
-
-    response = client.messages.create(
-        max_tokens=2048,
-        messages=history,
-        model=MODEL,
-        system=BASE_SYSTEM_PROMPT + "\n\n" + doc,
+    messages.append(HumanMessage(user_input))
+    response = client.invoke(messages)
+    messages.append(response)
+    first = (
+        response.content[0] if isinstance(response.content, list) else response.content
     )
-    block = response.content[0]
-    assert isinstance(block, anthropic.types.TextBlock)
-    assistant_text = block.text
-    history.append({"role": "assistant", "content": assistant_text})
-    print(assistant_text)
+    text = first if isinstance(first, str) else first["text"]
+    print(text)
+    break
