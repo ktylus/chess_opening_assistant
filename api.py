@@ -3,7 +3,6 @@ from fastapi import FastAPI
 from chat_models import ChatRequest
 from llm import Client
 
-
 app = FastAPI()
 
 
