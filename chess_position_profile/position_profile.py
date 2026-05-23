@@ -10,6 +10,8 @@ from enum import Enum
 import chess
 import chess.pgn
 
+from chess_position_profile.eco_codes import get_eco_code
+
 # Maps each minor piece home square to the piece type that belongs there
 _WHITE_HOME_PIECES = {
     chess.B1: chess.KNIGHT, chess.G1: chess.KNIGHT,
@@ -106,7 +108,7 @@ def build_profile(pgn: str) -> PositionProfile:
         white_developed=white_dev,
         black_developed=black_dev,
         castling=_castling_status(board),
-        eco_code=None,
+        eco_code=get_eco_code(pgn),
     )
 
 

@@ -36,13 +36,18 @@ def test_ruy_lopez_castling(ruy_lopez_profile):
     assert ruy_lopez_profile.castling.black == CastlingState.NOT_YET_BOTH
 
 
+def test_ruy_lopez_eco_code(ruy_lopez_profile):
+    assert ruy_lopez_profile.eco_code == "C60"
+
+
 def test_ruy_lopez_text_output(ruy_lopez_profile):
     text = profile_to_text(ruy_lopez_profile)
     assert text == (
         "## Position Profile\n"
         "Center pawns: e4 (white), e5 (black)\n"
         "Development: White has 2/4 minor pieces developed, Black has 1/4.\n"
-        "Castling — White: not yet castled (both sides available); Black: not yet castled (both sides available)"
+        "Castling — White: not yet castled (both sides available); Black: not yet castled (both sides available)\n"
+        "ECO code: C60"
     )
 
 
@@ -61,11 +66,16 @@ def test_castled_castling(castled_profile):
     assert castled_profile.castling.black == CastlingState.NOT_YET_BOTH
 
 
+def test_castled_eco_code(castled_profile):
+    assert castled_profile.eco_code == "C55"
+
+
 def test_castled_text_output(castled_profile):
     text = profile_to_text(castled_profile)
     assert text == (
         "## Position Profile\n"
         "Center pawns: e4 (white), e5 (black)\n"
         "Development: White has 2/4 minor pieces developed, Black has 2/4.\n"
-        "Castling — White: castled kingside; Black: not yet castled (both sides available)"
+        "Castling — White: castled kingside; Black: not yet castled (both sides available)\n"
+        "ECO code: C55"
     )
