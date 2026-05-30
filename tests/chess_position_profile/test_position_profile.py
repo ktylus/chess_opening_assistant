@@ -1,6 +1,7 @@
 import chess
 import pytest
 
+from chess_position_profile.eco_codes import EcoCodeLookup
 from chess_position_profile.position_profile import (
     CastlingState,
     build_profile,
@@ -11,14 +12,19 @@ RUY_LOPEZ_STANDARD_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5"
 CASTLED_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O"
 
 
-@pytest.fixture
-def ruy_lopez_profile():
-    return build_profile(RUY_LOPEZ_STANDARD_PGN)
+@pytest.fixture(scope="module")
+def eco_lookup():
+    return EcoCodeLookup()
 
 
 @pytest.fixture
-def castled_profile():
-    return build_profile(CASTLED_PGN)
+def ruy_lopez_profile(eco_lookup):
+    return build_profile(RUY_LOPEZ_STANDARD_PGN, eco_lookup)
+
+
+@pytest.fixture
+def castled_profile(eco_lookup):
+    return build_profile(CASTLED_PGN, eco_lookup)
 
 
 def test_ruy_lopez_center(ruy_lopez_profile):

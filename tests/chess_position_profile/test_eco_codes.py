@@ -1,4 +1,6 @@
-from chess_position_profile.eco_codes import get_eco_code
+import pytest
+
+from chess_position_profile.eco_codes import EcoCodeLookup
 
 # Owen Defense: Matovinsky Gambit
 # B00 -- 1. e4 b6 2. d4 Bb7 3. Bd3 f5 4. exf5 Bxg2 5. Qh5+ g6
@@ -18,17 +20,22 @@ EXACT_MATCH_NOT_LONGEST_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O d
 ONE_PLY_PGN = "1. e4"
 
 
-def test_match_by_popping():
-    assert get_eco_code(MATCH_BY_POPPING_PGN) == "B00"
+@pytest.fixture(scope="module")
+def eco_lookup():
+    return EcoCodeLookup()
 
 
-def test_exact_match_longest_variation():
-    assert get_eco_code(EXACT_MATCH_LONGEST_VARIATION_PGN) == "B36"
+def test_match_by_popping(eco_lookup):
+    assert eco_lookup.get(MATCH_BY_POPPING_PGN) == "B00"
 
 
-def test_exact_match_not_longest():
-    assert get_eco_code(EXACT_MATCH_NOT_LONGEST_PGN) == "C79"
+def test_exact_match_longest_variation(eco_lookup):
+    assert eco_lookup.get(EXACT_MATCH_LONGEST_VARIATION_PGN) == "B36"
 
 
-def test_one_ply():
-    assert get_eco_code(ONE_PLY_PGN) == "B00"
+def test_exact_match_not_longest(eco_lookup):
+    assert eco_lookup.get(EXACT_MATCH_NOT_LONGEST_PGN) == "C79"
+
+
+def test_one_ply(eco_lookup):
+    assert eco_lookup.get(ONE_PLY_PGN) == "B00"

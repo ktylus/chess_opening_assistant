@@ -10,16 +10,20 @@ from enum import Enum
 import chess
 import chess.pgn
 
-from chess_position_profile.eco_codes import get_eco_code
+from chess_position_profile.eco_codes import EcoCodeLookup
 
 # Maps each minor piece home square to the piece type that belongs there
 _WHITE_HOME_PIECES = {
-    chess.B1: chess.KNIGHT, chess.G1: chess.KNIGHT,
-    chess.C1: chess.BISHOP, chess.F1: chess.BISHOP,
+    chess.B1: chess.KNIGHT,
+    chess.G1: chess.KNIGHT,
+    chess.C1: chess.BISHOP,
+    chess.F1: chess.BISHOP,
 }
 _BLACK_HOME_PIECES = {
-    chess.B8: chess.KNIGHT, chess.G8: chess.KNIGHT,
-    chess.C8: chess.BISHOP, chess.F8: chess.BISHOP,
+    chess.B8: chess.KNIGHT,
+    chess.G8: chess.KNIGHT,
+    chess.C8: chess.BISHOP,
+    chess.F8: chess.BISHOP,
 }
 
 
@@ -62,10 +66,14 @@ def _center_pawn_config(board: chess.Board) -> dict[str, chess.Color]:
 def _development_counts(board: chess.Board) -> tuple[int, int]:
     def _count(home_pieces: dict, color: chess.Color) -> int:
         return sum(
-            1 for sq, piece_type in home_pieces.items()
+            1
+            for sq, piece_type in home_pieces.items()
             if board.piece_at(sq) != chess.Piece(piece_type, color)
         )
-    return _count(_WHITE_HOME_PIECES, chess.WHITE), _count(_BLACK_HOME_PIECES, chess.BLACK)
+
+    return _count(_WHITE_HOME_PIECES, chess.WHITE), _count(
+        _BLACK_HOME_PIECES, chess.BLACK
+    )
 
 
 def _castling_status(board: chess.Board) -> CastlingStatus:
@@ -94,10 +102,12 @@ def _castling_status(board: chess.Board) -> CastlingStatus:
                 return CastlingState.CASTLED_QUEENSIDE
         return CastlingState.RIGHTS_FORFEITED
 
-    return CastlingStatus(white=side_status(chess.WHITE), black=side_status(chess.BLACK))
+    return CastlingStatus(
+        white=side_status(chess.WHITE), black=side_status(chess.BLACK)
+    )
 
 
-def build_profile(pgn: str) -> PositionProfile:
+def build_profile(pgn: str, eco_lookup: EcoCodeLookup) -> PositionProfile:
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Invalid PGN string")
@@ -108,7 +118,7 @@ def build_profile(pgn: str) -> PositionProfile:
         white_developed=white_dev,
         black_developed=black_dev,
         castling=_castling_status(board),
-        eco_code=get_eco_code(pgn),
+        eco_code=eco_lookup.get(pgn),
     )
 
 
@@ -129,7 +139,9 @@ def profile_to_text(profile: PositionProfile) -> str:
         f"Black has {profile.black_developed}/4."
     )
 
-    lines.append(f"Castling — White: {profile.castling.white.value}; Black: {profile.castling.black.value}")
+    lines.append(
+        f"Castling — White: {profile.castling.white.value}; Black: {profile.castling.black.value}"
+    )
 
     if profile.eco_code:
         lines.append(f"ECO code: {profile.eco_code}")
