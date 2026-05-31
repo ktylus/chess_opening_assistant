@@ -3,7 +3,7 @@ from langchain.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.messages import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from chat_models import ChatRequest, MessageRole
+from agent.chat_models import ChatRequest, MessageRole
 
 MODEL = "gemini-3.1-flash-lite"
 

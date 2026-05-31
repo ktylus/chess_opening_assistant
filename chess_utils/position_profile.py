@@ -10,7 +10,7 @@ from enum import Enum
 import chess
 import chess.pgn
 
-from chess_position_profile.eco_codes import EcoCodeLookup
+from chess_utils.eco_codes import EcoCodeLookup
 
 # Maps each minor piece home square to the piece type that belongs there
 _WHITE_HOME_PIECES = {

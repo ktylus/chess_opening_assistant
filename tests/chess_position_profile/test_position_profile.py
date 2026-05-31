@@ -1,8 +1,8 @@
 import chess
 import pytest
 
-from chess_position_profile.eco_codes import EcoCodeLookup
-from chess_position_profile.position_profile import (
+from chess_utils.eco_codes import EcoCodeLookup
+from chess_utils.position_profile import (
     CastlingState,
     build_profile,
     profile_to_text,

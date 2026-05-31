@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
-from chat_models import ChatRequest
-from llm import Client
+from agent.chat_models import ChatRequest
+from agent.client import Client
 
 app = FastAPI()
 

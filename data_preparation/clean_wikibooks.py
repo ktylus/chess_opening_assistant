@@ -6,7 +6,7 @@ from pathlib import Path
 import mwparserfromhell
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from chess_position_profile.eco_codes import EcoCodeLookup
+from chess_utils.eco_codes import EcoCodeLookup
 
 SECTIONS_TO_DROP = {"history", "theory table", "references", "see also"}
 
