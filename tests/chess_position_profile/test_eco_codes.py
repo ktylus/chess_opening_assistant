@@ -1,6 +1,6 @@
 import pytest
 
-from chess_utils.eco_codes import EcoCodeLookup
+from src.chess_utils.eco_codes import EcoCodeLookup
 
 # Owen Defense: Matovinsky Gambit
 # B00 -- 1. e4 b6 2. d4 Bb7 3. Bd3 f5 4. exf5 Bxg2 5. Qh5+ g6
