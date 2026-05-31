@@ -15,3 +15,4 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[Message]
+    pgn: str = ""
