@@ -8,13 +8,10 @@ import requests
 class EcoCodeLookup:
     def __init__(self):
         url = "https://huggingface.co/datasets/Lichess/chess-openings/resolve/main/data/train-00000-of-00001.parquet"
-        # data = requests.get(url).content
-        # eco_data = pl.read_parquet(io.BytesIO(data)).select(
-        #     pl.col("eco"), pl.col("epd")
-        # )
-        eco_data = pl.read_parquet(
-            "hf://datasets/Lichess/chess-openings/data/train-00000-of-00001.parquet"
-        ).select(pl.col("eco"), pl.col("epd"))
+        data = requests.get(url).content
+        eco_data = pl.read_parquet(io.BytesIO(data)).select(
+            pl.col("eco"), pl.col("epd")
+        )
         self._lookup: dict[str, str] = dict(
             zip(eco_data["epd"].to_list(), eco_data["eco"].to_list(), strict=True)
         )
