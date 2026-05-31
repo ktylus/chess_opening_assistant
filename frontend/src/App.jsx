@@ -44,9 +44,19 @@ export default function App() {
           pgn: currentPgn,
         }),
       })
-      const text = await res.text()
-      const reply = JSON.parse(text)
-      setMessages([...nextMessages, { role: 'assistant', content: reply }])
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+
+      setMessages([...nextMessages, { role: 'assistant', content: '' }])
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+        setMessages([...nextMessages, { role: 'assistant', content: accumulated }])
+      }
     } catch (err) {
       setMessages([...nextMessages, { role: 'assistant', content: 'Error contacting the server.' }])
     } finally {

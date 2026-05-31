@@ -31,7 +31,7 @@ class Client:
                 messages.append(AIMessage(message.content))
         return messages
 
-    def invoke(self, chat_request: ChatRequest) -> str:
+    async def stream(self, chat_request: ChatRequest):
         position_context = (
             f"\n\nCurrent position (PGN): {chat_request.pgn}"
             if chat_request.pgn
@@ -39,11 +39,11 @@ class Client:
         )
         system_message = SystemMessage(system_prompt + position_context)
         messages = [system_message] + self._to_langchain_messages(chat_request)
-        response = model.invoke(messages)
-        first = (
-            response.content[0]
-            if isinstance(response.content, list)
-            else response.content
-        )
-        text = first if isinstance(first, str) else first["text"]
-        return text
+        async for chunk in model.astream(messages):
+            content = chunk.content
+            if isinstance(content, list):
+                content = content[0] if content else ""
+            if isinstance(content, dict):
+                content = content.get("text", "")
+            if content:
+                yield content

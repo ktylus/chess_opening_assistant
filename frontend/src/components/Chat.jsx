@@ -28,7 +28,7 @@ export default function Chat({ messages, onSend, loading }) {
             <p>{msg.content}</p>
           </div>
         ))}
-        {loading && (
+        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="message assistant">
             <span className="message-role">Assistant</span>
             <p className="thinking">Thinking...</p>
