@@ -3,6 +3,7 @@ import re
 import sys
 from pathlib import Path
 
+import chess
 import mwparserfromhell
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -51,6 +52,21 @@ def extract_main_prose(wikitext):
     return "".join(kept)
 
 
+def fen_from_moves(moves_str):
+    """Return the FEN after playing through a space-separated move sequence."""
+    if not moves_str:
+        return None
+    board = chess.Board()
+    try:
+        for token in moves_str.split():
+            if token.endswith('.') or token.endswith('...'):
+                continue
+            board.push_san(token)
+    except (chess.InvalidMoveError, chess.IllegalMoveError, ValueError):
+        return None
+    return board.fen()
+
+
 def parse_pgn_from_title(title):
     prefix = "Chess Opening Theory/"
     if not title or not title.startswith(prefix):
@@ -74,6 +90,7 @@ def clean_article(wikitext, title=None, eco_lookup=None):
     metadata["eco"] = (
         eco_lookup.get(metadata["pgn"]) if eco_lookup and metadata["pgn"] else None
     )
+    metadata["fen"] = fen_from_moves(metadata["pgn"])
 
     prose_wikitext = extract_main_prose(wikitext)
     parsed_prose = mwparserfromhell.parse(prose_wikitext)
