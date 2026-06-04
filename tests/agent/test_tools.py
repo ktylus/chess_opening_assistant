@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.tools import retrieve_docs_by_fen
+from src.agent.tools import find_docs_by_fen
 
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 
@@ -27,6 +27,6 @@ TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
     ],
 )
 def test_retrieve_docs_by_fen(fen, expected_names):
-    docs = retrieve_docs_by_fen(TEST_DATA_PATH, fen)
+    docs = find_docs_by_fen(fen, TEST_DATA_PATH)
     assert [doc["metadata"]["name"] for doc in docs] == expected_names
     assert all(doc["metadata"]["fen"] == fen for doc in docs)
