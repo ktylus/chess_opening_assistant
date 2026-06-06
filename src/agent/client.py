@@ -32,7 +32,7 @@ class Client:
             "messages": [system_message] + self._to_langchain_messages(chat_request)
         }
         async for chunk in agent.astream(messages, stream_mode="messages"):  # type: ignore
-            msg = chunk[0].content[0]["text"] if chunk else ""  # type: ignore
+            msg = chunk[0].content[0]["text"] if chunk[0].content else ""  # type: ignore
             yield msg
 
     @staticmethod
