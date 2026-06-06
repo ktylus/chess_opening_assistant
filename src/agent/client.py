@@ -29,8 +29,9 @@ class Client:
         self.model = init_chat_model(model=MODEL, model_provider="google_genai")
 
     async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
-        retrieval_tool = make_fen_retrieve_tool(pgn_to_fen(chat_request.pgn))
-        agent = create_agent(self.model, tools=[retrieval_tool])
+        agent_tools = [make_fen_retrieve_tool(pgn_to_fen(chat_request.pgn))]
+        status_messages = {at.tool.name: at.status_message for at in agent_tools}
+        agent = create_agent(self.model, tools=[at.tool for at in agent_tools])
         position_context = (
             f"\n\nCurrent position (PGN): {chat_request.pgn}"
             if chat_request.pgn
@@ -45,7 +46,9 @@ class Client:
             if isinstance(msg, AIMessageChunk):
                 content = msg.content[0]["text"] if msg.content else ""  # type: ignore
             elif isinstance(msg, ToolMessage):
-                content = msg.content
+                content = (
+                    status_messages.get(msg.name or "", "*Using tool...*") + "\n\n"
+                )
             yield content  # type: ignore
 
     @staticmethod

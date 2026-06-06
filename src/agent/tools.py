@@ -1,9 +1,17 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from langchain.tools import tool
+from langchain_core.tools import BaseTool
 
 from src.agent.doc_models import OpeningDoc
+
+
+@dataclass
+class AgentTool:
+    tool: BaseTool
+    status_message: str
 
 DEFAULT_DOCS_PATH = Path("data/wikibooks_openings/cleaned_openings.jsonl")
 
@@ -31,7 +39,10 @@ def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
         ]
         return "\n\n".join(formatted)
 
-    return retrieve_docs_by_board_state
+    return AgentTool(
+        tool=retrieve_docs_by_board_state,
+        status_message="*Searching opening theory...*",
+    )
 
 
 def find_docs_by_fen(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> list[OpeningDoc]:
