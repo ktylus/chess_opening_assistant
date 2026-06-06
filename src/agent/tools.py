@@ -35,7 +35,7 @@ def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
 
 
 def find_docs_by_fen(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> list[OpeningDoc]:
-    with open(docs_path) as f:
-        doc_jsons = f.read().split("\n")
+    with open(docs_path, encoding="utf-8") as f:
+        doc_jsons = [line for line in f.read().split("\n") if line.strip()]
     doc_jsons = [json.loads(json_str) for json_str in doc_jsons]
     return [doc for doc in doc_jsons if doc["metadata"]["fen"] == fen]
