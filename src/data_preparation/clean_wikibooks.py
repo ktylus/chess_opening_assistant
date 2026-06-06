@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.chess_utils.eco_codes import EcoCodeLookup
 
 SECTIONS_TO_DROP = {"history", "theory table", "references", "see also"}
+INPUT = "data/wikibooks_openings/raw_openings.jsonl"
+OUTPUT = "data/wikibooks_openings/cleaned_openings.jsonl"
 
 
 def extract_opening_name(parsed):
@@ -59,7 +61,7 @@ def fen_from_moves(moves_str):
     board = chess.Board()
     try:
         for token in moves_str.split():
-            if token.endswith('.') or token.endswith('...'):
+            if token.endswith(".") or token.endswith("..."):
                 continue
             board.push_san(token)
     except (chess.InvalidMoveError, chess.IllegalMoveError, ValueError):
@@ -113,9 +115,6 @@ def clean_article(wikitext, title=None, eco_lookup=None):
 
     return {"metadata": metadata, "text": plain}
 
-
-INPUT = "data/wikibooks_openings/raw_openings.jsonl"
-OUTPUT = "data/wikibooks_openings/cleaned_openings.jsonl"
 
 eco_lookup = EcoCodeLookup()
 
