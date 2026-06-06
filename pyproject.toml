@@ -36,3 +36,6 @@ known-first-party = ["your_package_name"]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
