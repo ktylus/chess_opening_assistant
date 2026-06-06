@@ -13,7 +13,7 @@ def client():
 def chat_request():
     return ChatRequest(
         messages=[Message(role=MessageRole.USER, content="test")],
-        pgn="1. e4 e5 2. Nf3 Nf6 3. Bb5",
+        pgn="1. e4 e5 2. Nf3 Nc6 3. Bb5",
     )
 
 
