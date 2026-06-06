@@ -12,9 +12,13 @@ export default function App() {
   const currentPgn = useMemo(() => {
     const chess = new Chess()
     for (let i = 0; i < viewIndex; i++) chess.move(moves[i])
-    const pgn = chess.pgn()
     // Throwing away the PGN headers and the trailing star char.
-    return pgn.split('\n\n').pop().replace(/\s*\*$/, '').trim()
+    return chess.pgn()
+      .split('\n')
+      .filter(line => !line.startsWith('['))
+      .join('\n')
+      .replace(/\s*\*$/, '')
+      .trim()
   }, [moves, viewIndex])
 
   function handleMove(san) {
