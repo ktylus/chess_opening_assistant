@@ -12,7 +12,9 @@ export default function App() {
   const currentPgn = useMemo(() => {
     const chess = new Chess()
     for (let i = 0; i < viewIndex; i++) chess.move(moves[i])
-    return chess.pgn()
+    const pgn = chess.pgn()
+    // Throwing away the PGN headers and the trailing star char.
+    return pgn.split('\n\n').pop().replace(/\s*\*$/, '').trim()
   }, [moves, viewIndex])
 
   function handleMove(san) {
