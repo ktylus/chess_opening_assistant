@@ -1,7 +1,16 @@
+from collections.abc import AsyncGenerator
+
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 
 from src.agent.chat_models import ChatRequest, MessageRole
 from src.agent.tools import make_fen_retrieve_tool
@@ -19,7 +28,7 @@ class Client:
         load_dotenv()
         self.model = init_chat_model(model=MODEL, model_provider="google_genai")
 
-    async def stream(self, chat_request: ChatRequest):
+    async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
         retrieval_tool = make_fen_retrieve_tool(pgn_to_fen(chat_request.pgn))
         agent = create_agent(self.model, tools=[retrieval_tool])
         position_context = (
@@ -32,8 +41,12 @@ class Client:
             "messages": [system_message] + self._to_langchain_messages(chat_request)
         }
         async for chunk in agent.astream(messages, stream_mode="messages"):  # type: ignore
-            msg = chunk[0].content[0]["text"] if chunk[0].content else ""  # type: ignore
-            yield msg
+            msg = chunk[0]  # type: ignore
+            if isinstance(msg, AIMessageChunk):
+                content = msg.content[0]["text"] if msg.content else ""  # type: ignore
+            elif isinstance(msg, ToolMessage):
+                content = msg.content
+            yield content  # type: ignore
 
     @staticmethod
     def _to_langchain_messages(chat_request: ChatRequest) -> list[BaseMessage]:
