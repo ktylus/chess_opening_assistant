@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 export default function Chat({ messages, onSend, loading }) {
   const [input, setInput] = useState('')
@@ -25,7 +26,9 @@ export default function Chat({ messages, onSend, loading }) {
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.role}`}>
             <span className="message-role">{msg.role === 'user' ? 'You' : 'Assistant'}</span>
-            <p>{msg.content}</p>
+            <div className="message-content">
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            </div>
           </div>
         ))}
         {loading && messages[messages.length - 1]?.role !== 'assistant' && (

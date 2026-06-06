@@ -170,21 +170,28 @@ body {
   letter-spacing: 0.05em;
 }
 
-.message p {
+.message-content {
   background: #2a2a2a;
   padding: 10px 14px;
   border-radius: 8px;
   line-height: 1.6;
   font-size: 0.95rem;
-  white-space: pre-wrap;
 }
 
-.message.user p {
+.message.user .message-content {
   background: #1e3a1e;
   color: #c8e6c8;
 }
 
-.thinking {
+.message-content p { margin: 0; white-space: pre-wrap; }
+.message-content p + p { margin-top: 8px; }
+.message-content ul, .message-content ol { padding-left: 20px; margin: 6px 0; }
+.message-content li { margin: 2px 0; }
+.message-content h1, .message-content h2, .message-content h3 { margin: 8px 0 4px; font-size: 1rem; }
+.message-content strong { color: #fff; }
+.message-content em { color: #aaa; }
+
+.thinking, .thinking p {
   color: #666 !important;
   font-style: italic;
 }
