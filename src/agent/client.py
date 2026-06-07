@@ -13,7 +13,11 @@ from langchain_core.messages import (
 )
 
 from src.agent.chat_models import ChatRequest, MessageRole
-from src.agent.tools import make_fen_retrieve_tool, make_stockfish_eval_tool
+from src.agent.tools import (
+    make_fen_retrieve_tool,
+    make_lichess_masters_opening_explorer_tool,
+    make_stockfish_eval_tool,
+)
 from src.chess_utils.board_state import pgn_to_fen
 
 MODEL = "gemini-3.1-flash-lite"
@@ -32,7 +36,8 @@ class Client:
         fen = pgn_to_fen(chat_request.pgn)
         agent_tools = [
             make_fen_retrieve_tool(fen),
-            make_stockfish_eval_tool(fen)
+            make_stockfish_eval_tool(fen),
+            make_lichess_masters_opening_explorer_tool(fen),
         ]
         status_messages = {at.tool.name: at.status_message for at in agent_tools}
         agent = create_agent(self.model, tools=[at.tool for at in agent_tools])

@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.tools import _find_docs_by_fen, make_stockfish_eval_tool
+from src.agent.tools import (
+    STOCKFISH_LINES,
+    _find_docs_by_fen,
+    make_lichess_masters_opening_explorer_tool,
+    make_stockfish_eval_tool,
+)
 
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 
@@ -34,10 +39,17 @@ def test_retrieve_docs_by_fen(fen, expected_names):
     assert all(doc["metadata"]["fen"] == fen for doc in docs)
 
 
-def test_stockfish_eval_returns_three_lines():
+def test_lichess_masters_opening_explorer_returns_data():
+    agent_tool = make_lichess_masters_opening_explorer_tool(STARTING_FEN)
+    result = agent_tool.tool.invoke({})
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_stockfish_eval_returns_correct_n_lines():
     agent_tool = make_stockfish_eval_tool(STARTING_FEN)
     result = agent_tool.tool.invoke({})
     lines = [line for line in result.strip().split("\n") if line]
-    assert len(lines) == 3
+    assert len(lines) == STOCKFISH_LINES
     for i, line in enumerate(lines, start=1):
         assert line.startswith(f"Line {i}")

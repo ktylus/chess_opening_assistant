@@ -2,9 +2,11 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import quote, urlencode
 
 import chess
 import chess.engine
+import requests
 from langchain.tools import tool
 from langchain_core.tools import BaseTool
 
@@ -20,6 +22,8 @@ class AgentTool:
 DEFAULT_DOCS_PATH = Path("data/wikibooks_openings/cleaned_openings.jsonl")
 STOCKFISH_THINK_TIME = 2.0
 STOCKFISH_LINES = 2
+LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
+LICHESS_TOP_MOVES = 5
 
 
 def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
@@ -112,3 +116,51 @@ def _moves_to_san(board: chess.Board, moves: list[chess.Move]) -> list[str]:
         result.append(board.san(move))
         board.push(move)
     return result
+
+
+def make_lichess_masters_opening_explorer_tool(fen: str):
+    token = os.environ.get("LICHESS_API_KEY")
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+    @tool
+    def get_lichess_masters_opening_data() -> str:
+        """Get move statistics from master games in the current position."""
+        query = urlencode(
+            {"fen": fen, "moves": LICHESS_TOP_MOVES, "topGames": 0}, quote_via=quote
+        )
+        response = requests.get(
+            f"{LICHESS_MASTERS_URL}?{query}",
+            headers=headers,
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        position_total = data["white"] + data["draws"] + data["black"]
+        if position_total == 0:
+            return "No master games found for this position."
+
+        lines = [f"Total master games in this position: {position_total}\n"]
+        lines.append("Most common continuations:")
+
+        board = chess.Board(fen)
+        for i, move in enumerate(data["moves"], start=1):
+            move_total = move["white"] + move["draws"] + move["black"]
+            if move_total == 0:
+                continue
+            san = board.san(chess.Move.from_uci(move["uci"]))
+            prevalence = move_total / position_total * 100
+            white_pct = move["white"] / move_total * 100
+            draw_pct = move["draws"] / move_total * 100
+            black_pct = move["black"] / move_total * 100
+            lines.append(
+                f"{i}. {san} — {prevalence:.0f}% of games"
+                f" | White {white_pct:.0f}% / Draw {draw_pct:.0f}% / Black {black_pct:.0f}%"
+            )
+
+        return "\n".join(lines)
+
+    return AgentTool(
+        tool=get_lichess_masters_opening_data,
+        status_message="*Consulting Lichess opening explorer (master games)...*",
+    )
