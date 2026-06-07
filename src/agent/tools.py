@@ -36,7 +36,7 @@ def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
     @tool
     def retrieve_docs_by_board_state() -> str:
         """Retrieve opening docs relating to the current board position."""
-        docs = find_docs_by_fen(fen, docs_path)
+        docs = _find_docs_by_fen(fen, docs_path)
         if not docs:
             return "No documents were found for this position."
         formatted = [
@@ -49,6 +49,15 @@ def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
         tool=retrieve_docs_by_board_state,
         status_message="*Searching opening theory...*",
     )
+
+
+def _find_docs_by_fen(
+    fen: str, docs_path: Path = DEFAULT_DOCS_PATH
+) -> list[OpeningDoc]:
+    with open(docs_path, encoding="utf-8") as f:
+        doc_jsons = [line for line in f.read().split("\n") if line.strip()]
+    doc_jsons = [json.loads(json_str) for json_str in doc_jsons]
+    return [doc for doc in doc_jsons if doc["metadata"]["fen"] == fen]
 
 
 def make_stockfish_eval_tool(
@@ -103,10 +112,3 @@ def _moves_to_san(board: chess.Board, moves: list[chess.Move]) -> list[str]:
         result.append(board.san(move))
         board.push(move)
     return result
-
-
-def find_docs_by_fen(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> list[OpeningDoc]:
-    with open(docs_path, encoding="utf-8") as f:
-        doc_jsons = [line for line in f.read().split("\n") if line.strip()]
-    doc_jsons = [json.loads(json_str) for json_str in doc_jsons]
-    return [doc for doc in doc_jsons if doc["metadata"]["fen"] == fen]

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.tools import find_docs_by_fen, make_stockfish_eval_tool
+from src.agent.tools import _find_docs_by_fen, make_stockfish_eval_tool
 
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 
@@ -29,7 +29,7 @@ STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     ],
 )
 def test_retrieve_docs_by_fen(fen, expected_names):
-    docs = find_docs_by_fen(fen, TEST_DATA_PATH)
+    docs = _find_docs_by_fen(fen, TEST_DATA_PATH)
     assert [doc["metadata"]["name"] for doc in docs] == expected_names
     assert all(doc["metadata"]["fen"] == fen for doc in docs)
 
