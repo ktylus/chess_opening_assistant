@@ -50,6 +50,7 @@ export default function Chat({ messages, onSend, loading }) {
         />
         <button type="submit" disabled={loading || !input.trim()}>Send</button>
       </form>
+      <p className="board-hint">Responses are based on the position currently on the board, not on moves described in the chat.</p>
     </div>
   )
 }

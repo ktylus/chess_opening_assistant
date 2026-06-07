@@ -139,6 +139,13 @@ body {
   gap: 16px;
 }
 
+.board-hint {
+  color: #555;
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 6px 0 10px;
+}
+
 .empty-hint {
   color: #555;
   font-style: italic;
