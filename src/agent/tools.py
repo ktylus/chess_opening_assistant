@@ -18,7 +18,6 @@ class AgentTool:
 
 
 DEFAULT_DOCS_PATH = Path("data/wikibooks_openings/cleaned_openings.jsonl")
-DEFAULT_STOCKFISH_PATH = os.environ.get("STOCKFISH_PATH", "stockfish")
 STOCKFISH_THINK_TIME = 2.0
 STOCKFISH_LINES = 3
 
@@ -54,15 +53,17 @@ def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
 
 def make_stockfish_eval_tool(
     fen: str,
-    stockfish_path: str = DEFAULT_STOCKFISH_PATH,
+    stockfish_path: str | None = None,
     think_time: float = STOCKFISH_THINK_TIME,
     num_lines: int = STOCKFISH_LINES,
 ):
+    resolved_path = stockfish_path or os.environ.get("STOCKFISH_PATH", "stockfish")
+
     @tool
     def evaluate_position_with_stockfish() -> str:
         """Evaluate the current board position using Stockfish, returning the top engine lines with scores."""
         board = chess.Board(fen)
-        with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
+        with chess.engine.SimpleEngine.popen_uci(resolved_path) as engine:
             results = engine.analyse(
                 board,
                 chess.engine.Limit(time=think_time),
