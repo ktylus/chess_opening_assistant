@@ -19,7 +19,7 @@ class AgentTool:
 
 DEFAULT_DOCS_PATH = Path("data/wikibooks_openings/cleaned_openings.jsonl")
 STOCKFISH_THINK_TIME = 2.0
-STOCKFISH_LINES = 3
+STOCKFISH_LINES = 2
 
 
 def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
