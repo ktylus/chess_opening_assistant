@@ -1,5 +1,6 @@
 .env
-.vscode
+.vscode/
+.venv/
 data/
 __pycache__
 src/frontend/node_modules
