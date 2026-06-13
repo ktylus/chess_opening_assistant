@@ -26,33 +26,23 @@ LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
 LICHESS_TOP_MOVES = 5
 
 
-def make_fen_retrieve_tool(fen: str, docs_path: Path = DEFAULT_DOCS_PATH):
+def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
     """
-    Create a tool to retrieve documents with passed FEN and docs path.
+    Retrieve and format opening docs for the given board position.
 
-    Args:
-    - fen: str - FEN notation describing board position
-    - docs_path: str - (optional) Path to the docs file
-    Returns:
-    - Tool to retrieve documents.
+    Unlike the engine/explorer tools, this is not an agent tool: retrieval is
+    driven by the position rather than chosen by the model, so the caller injects
+    the result into context for every position. Returns an empty string when no
+    documents match the position.
     """
-
-    @tool
-    def retrieve_docs_by_board_state() -> str:
-        """Retrieve opening docs relating to the current board position."""
-        docs = _find_docs_by_fen(fen, docs_path)
-        if not docs:
-            return "No documents were found for this position."
-        formatted = [
-            f"[Document {i + 1}: {doc['metadata']['name']}]\n{doc['text']}"
-            for i, doc in enumerate(docs)
-        ]
-        return "\n\n".join(formatted)
-
-    return AgentTool(
-        tool=retrieve_docs_by_board_state,
-        status_message="*Searching opening theory...*",
-    )
+    docs = _find_docs_by_fen(fen, docs_path)
+    if not docs:
+        return ""
+    formatted = [
+        f"[Document {i + 1}: {doc['metadata']['name']}]\n{doc['text']}"
+        for i, doc in enumerate(docs)
+    ]
+    return "\n\n".join(formatted)
 
 
 def _find_docs_by_fen(

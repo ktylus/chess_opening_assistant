@@ -14,9 +14,9 @@ from langchain_core.messages import (
 
 from src.agent.chat_models import ChatRequest, MessageRole
 from src.agent.tools import (
-    make_fen_retrieve_tool,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
+    retrieve_opening_docs,
 )
 from src.chess_utils.board_state import pgn_to_fen
 
@@ -35,7 +35,6 @@ class Client:
     async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
         fen = pgn_to_fen(chat_request.pgn)
         agent_tools = [
-            make_fen_retrieve_tool(fen),
             make_stockfish_eval_tool(fen),
             make_lichess_masters_opening_explorer_tool(fen),
         ]
@@ -47,9 +46,10 @@ class Client:
             else ""
         )
         system_message = SystemMessage(system_prompt + position_context)
-        messages = {
-            "messages": [system_message] + self._to_langchain_messages(chat_request)
-        }
+        conversation = self._inject_retrieved_docs(
+            self._to_langchain_messages(chat_request), fen
+        )
+        messages = {"messages": [system_message] + conversation}
         async for chunk in agent.astream(messages, stream_mode="messages"):  # type: ignore
             msg = chunk[0]  # type: ignore
             if isinstance(msg, AIMessageChunk):
@@ -59,6 +59,33 @@ class Client:
                     status_messages.get(msg.name or "", "*Using tool...*") + "\n\n"
                 )
             yield content  # type: ignore
+
+    @staticmethod
+    def _inject_retrieved_docs(
+        messages: list[BaseMessage], fen: str
+    ) -> list[BaseMessage]:
+        """Place opening theory for the current position right before the latest
+        user query, so it is adjacent to the question being answered.
+
+        The docs are regenerated every turn and never persisted into history, so
+        only the current position's docs are ever in context.
+        """
+        if not messages:
+            return messages
+        docs = retrieve_opening_docs(fen)
+        if docs:
+            content = (
+                "Relevant opening theory for the position currently on the board:\n\n"
+                f"{docs}\n\n"
+                "Use it where helpful when answering the next question."
+            )
+        else:
+            content = (
+                "No opening theory was retrieved for the position currently on the "
+                "board. Answer from your own knowledge and say so if the position is "
+                "outside known opening theory."
+            )
+        return messages[:-1] + [HumanMessage(content), messages[-1]]
 
     @staticmethod
     def _to_langchain_messages(chat_request: ChatRequest) -> list[BaseMessage]:
