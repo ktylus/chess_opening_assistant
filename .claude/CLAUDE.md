@@ -4,7 +4,7 @@ This project is about creating an agent-powered LLM-based assistant which aids i
 The idea is to ask questions about the position currently on the chessboard. The assistant should be able to answer questions about the nature of the position, highlighting key tactical and positional ideas, topical pawn breaks, etc.
 The system will be supported by relevant documents allowing for augmenting the context by precise retrieval.
 
-The environment is conda-based and named chess_assistant. Needs to be used via git bash, not powershell.
+The environment is controlled with `uv`. Git bash is available for bash execution.
 
 Stack (probably):
 - a bigger model as a main LLM
