@@ -4,7 +4,7 @@ from typing import TypedDict
 class DocMetadata(TypedDict):
     name: str
     pgn: str
-    fen: str
+    epd: str
 
 
 class OpeningDoc(TypedDict):

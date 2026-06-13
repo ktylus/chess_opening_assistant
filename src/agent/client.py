@@ -18,7 +18,7 @@ from src.agent.tools import (
     make_stockfish_eval_tool,
     retrieve_opening_docs,
 )
-from src.chess_utils.board_state import pgn_to_fen
+from src.chess_utils.board_state import get_fen_from_pgn
 from src.chess_utils.position_profile import build_profile, profile_to_text
 
 MODEL = "gemini-3.1-flash-lite"
@@ -34,7 +34,7 @@ class Client:
         self.model = init_chat_model(model=MODEL, model_provider="google_genai")
 
     async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
-        fen = pgn_to_fen(chat_request.pgn)
+        fen = get_fen_from_pgn(chat_request.pgn)
         agent_tools = [
             make_stockfish_eval_tool(fen),
             make_lichess_masters_opening_explorer_tool(fen),

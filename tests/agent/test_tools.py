@@ -4,10 +4,11 @@ import pytest
 
 from src.agent.tools import (
     STOCKFISH_LINES,
-    _find_docs_by_fen,
+    _find_docs_for_position,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
 )
+from src.chess_utils.board_state import get_position_key_from_fen
 
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 
@@ -18,6 +19,8 @@ STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     "fen, expected_names",
     [
         ("rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1", ["Ware Opening"]),
+        # Same position, different move counters (transposition): must still match.
+        ("rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 7 9", ["Ware Opening"]),
         (
             "rnbqkbnr/pppppppp/8/8/8/1P6/P1PPPPPP/RNBQKBNR b KQkq - 0 1",
             ["Nimzowitsch–Larsen attack"],
@@ -34,9 +37,9 @@ STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     ],
 )
 def test_retrieve_docs_by_fen(fen, expected_names):
-    docs = _find_docs_by_fen(fen, TEST_DATA_PATH)
+    docs = _find_docs_for_position(fen, TEST_DATA_PATH)
     assert [doc["metadata"]["name"] for doc in docs] == expected_names
-    assert all(doc["metadata"]["fen"] == fen for doc in docs)
+    assert all(doc["metadata"]["epd"] == get_position_key_from_fen(fen) for doc in docs)
 
 
 def test_lichess_masters_opening_explorer_returns_data():

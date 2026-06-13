@@ -11,6 +11,7 @@ from langchain.tools import tool
 from langchain_core.tools import BaseTool
 
 from src.agent.doc_models import OpeningDoc
+from src.chess_utils.board_state import get_position_key_from_fen
 
 
 @dataclass
@@ -35,7 +36,7 @@ def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
     the result into context for every position. Returns an empty string when no
     documents match the position.
     """
-    docs = _find_docs_by_fen(fen, docs_path)
+    docs = _find_docs_for_position(fen, docs_path)
     if not docs:
         return ""
     formatted = [
@@ -45,13 +46,14 @@ def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
     return "\n\n".join(formatted)
 
 
-def _find_docs_by_fen(
+def _find_docs_for_position(
     fen: str, docs_path: Path = DEFAULT_DOCS_PATH
 ) -> list[OpeningDoc]:
+    key = get_position_key_from_fen(fen)
     with open(docs_path, encoding="utf-8") as f:
         doc_jsons = [line for line in f.read().split("\n") if line.strip()]
     doc_jsons = [json.loads(json_str) for json_str in doc_jsons]
-    return [doc for doc in doc_jsons if doc["metadata"]["fen"] == fen]
+    return [doc for doc in doc_jsons if doc["metadata"]["epd"] == key]
 
 
 def make_stockfish_eval_tool(

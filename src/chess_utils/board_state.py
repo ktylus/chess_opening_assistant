@@ -3,7 +3,7 @@ import io
 import chess.pgn
 
 
-def pgn_to_fen(pgn: str) -> str:
+def get_fen_from_pgn(pgn: str) -> str:
     if not pgn.strip():
         return chess.Board().fen()
     game = chess.pgn.read_game(io.StringIO(pgn))
@@ -13,3 +13,8 @@ def pgn_to_fen(pgn: str) -> str:
         raise ValueError("Invalid PGN string")
     board = game.end().board()
     return board.fen()
+
+
+def get_position_key_from_fen(fen: str) -> str:
+    "Position-identity key: the FEN without its move counters (== board.epd())."
+    return " ".join(fen.split()[:4])

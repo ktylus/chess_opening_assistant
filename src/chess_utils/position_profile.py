@@ -104,7 +104,7 @@ def _castling_status(board: chess.Board) -> CastlingStatus:
 
 
 def build_profile(pgn: str) -> PositionProfile:
-    # Mirror pgn_to_fen: an empty PGN is the starting position, not an error.
+    # Mirror get_fen_from_pgn: an empty PGN is the starting position, not an error.
     if not pgn.strip():
         board = chess.Board()
     else:

@@ -53,8 +53,12 @@ def extract_main_prose(wikitext):
     return "".join(kept)
 
 
-def fen_from_moves(moves_str):
-    """Return the FEN after playing through a space-separated move sequence."""
+def epd_from_moves(moves_str):
+    """Return the EPD after playing through a space-separated move sequence.
+
+    EPD is the FEN without the move counters, so it serves as a position-identity
+    key that matches across transpositions when looking docs up at query time.
+    """
     if not moves_str:
         return None
     board = chess.Board()
@@ -65,7 +69,7 @@ def fen_from_moves(moves_str):
             board.push_san(token)
     except (chess.InvalidMoveError, chess.IllegalMoveError, ValueError):
         return None
-    return board.fen()
+    return board.epd()
 
 
 def parse_pgn_from_title(title):
@@ -88,7 +92,7 @@ def clean_article(wikitext, title=None):
     parsed = mwparserfromhell.parse(wikitext)
     metadata = extract_opening_name(parsed)
     metadata["pgn"] = parse_pgn_from_title(title)
-    metadata["fen"] = fen_from_moves(metadata["pgn"])
+    metadata["epd"] = epd_from_moves(metadata["pgn"])
 
     prose_wikitext = extract_main_prose(wikitext)
     parsed_prose = mwparserfromhell.parse(prose_wikitext)
