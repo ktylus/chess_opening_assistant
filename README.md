@@ -1,4 +1,4 @@
-# Chess Opening Assistant
+# ♟ Chess Opening Assistant
 
 [![CI](https://github.com/ktylus/chess_opening_assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/ktylus/chess_opening_assistant/actions/workflows/ci.yml)
 
