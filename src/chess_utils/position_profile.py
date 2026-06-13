@@ -104,10 +104,14 @@ def _castling_status(board: chess.Board) -> CastlingStatus:
 
 
 def build_profile(pgn: str) -> PositionProfile:
-    game = chess.pgn.read_game(io.StringIO(pgn))
-    if game is None:
-        raise ValueError("Invalid PGN string")
-    board = game.end().board()
+    # Mirror pgn_to_fen: an empty PGN is the starting position, not an error.
+    if not pgn.strip():
+        board = chess.Board()
+    else:
+        game = chess.pgn.read_game(io.StringIO(pgn))
+        if game is None or not game.mainline_moves():
+            raise ValueError("Invalid PGN string")
+        board = game.end().board()
     white_dev, black_dev = _development_counts(board)
     return PositionProfile(
         center_pawns=_center_pawn_config(board),
