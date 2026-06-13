@@ -42,6 +42,7 @@ def test_retrieve_docs_by_fen(fen, expected_names):
     assert all(doc["metadata"]["epd"] == get_position_key_from_fen(fen) for doc in docs)
 
 
+@pytest.mark.integration
 def test_lichess_masters_opening_explorer_returns_data():
     agent_tool = make_lichess_masters_opening_explorer_tool(STARTING_FEN)
     result = agent_tool.tool.invoke({})
@@ -49,6 +50,7 @@ def test_lichess_masters_opening_explorer_returns_data():
     assert len(result) > 0
 
 
+@pytest.mark.integration
 def test_stockfish_eval_returns_correct_n_lines():
     agent_tool = make_stockfish_eval_tool(STARTING_FEN)
     result = agent_tool.tool.invoke({})

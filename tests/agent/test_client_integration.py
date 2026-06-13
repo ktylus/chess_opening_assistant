@@ -17,6 +17,7 @@ def chat_request():
     )
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_responds(client, chat_request):
     chunks = []
