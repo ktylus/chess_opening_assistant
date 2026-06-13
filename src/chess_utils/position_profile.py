@@ -1,7 +1,6 @@
 # Position profiling: extracts structured opening features from a PGN move sequence.
 # PGN is preferred over FEN — opening lines are naturally expressed as move sequences.
 # These features are injected into the system prompt to enrich LLM context.
-# ECO code lookup is deferred — needs external dataset (see todo.txt).
 
 import io
 from dataclasses import dataclass
@@ -9,8 +8,6 @@ from enum import Enum
 
 import chess
 import chess.pgn
-
-from src.chess_utils.eco_codes import EcoCodeLookup
 
 # Maps each minor piece home square to the piece type that belongs there
 _WHITE_HOME_PIECES = {
@@ -50,7 +47,6 @@ class PositionProfile:
     white_developed: int
     black_developed: int
     castling: CastlingStatus
-    eco_code: str | None  # placeholder, always None until dataset is integrated
 
 
 def _center_pawn_config(board: chess.Board) -> dict[str, chess.Color]:
@@ -107,7 +103,7 @@ def _castling_status(board: chess.Board) -> CastlingStatus:
     )
 
 
-def build_profile(pgn: str, eco_lookup: EcoCodeLookup) -> PositionProfile:
+def build_profile(pgn: str) -> PositionProfile:
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Invalid PGN string")
@@ -118,7 +114,6 @@ def build_profile(pgn: str, eco_lookup: EcoCodeLookup) -> PositionProfile:
         white_developed=white_dev,
         black_developed=black_dev,
         castling=_castling_status(board),
-        eco_code=eco_lookup.get(pgn),
     )
 
 
@@ -142,8 +137,5 @@ def profile_to_text(profile: PositionProfile) -> str:
     lines.append(
         f"Castling — White: {profile.castling.white.value}; Black: {profile.castling.black.value}"
     )
-
-    if profile.eco_code:
-        lines.append(f"ECO code: {profile.eco_code}")
 
     return "\n".join(lines)

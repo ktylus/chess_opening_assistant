@@ -7,7 +7,6 @@ import chess
 import mwparserfromhell
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.chess_utils.eco_codes import EcoCodeLookup
 
 SECTIONS_TO_DROP = {"history", "theory table", "references", "see also"}
 INPUT = "data/wikibooks_openings/raw_openings.jsonl"
@@ -85,13 +84,10 @@ def parse_pgn_from_title(title):
     return " ".join(moves)
 
 
-def clean_article(wikitext, title=None, eco_lookup=None):
+def clean_article(wikitext, title=None):
     parsed = mwparserfromhell.parse(wikitext)
     metadata = extract_opening_name(parsed)
     metadata["pgn"] = parse_pgn_from_title(title)
-    metadata["eco"] = (
-        eco_lookup.get(metadata["pgn"]) if eco_lookup and metadata["pgn"] else None
-    )
     metadata["fen"] = fen_from_moves(metadata["pgn"])
 
     prose_wikitext = extract_main_prose(wikitext)
@@ -116,8 +112,6 @@ def clean_article(wikitext, title=None, eco_lookup=None):
     return {"metadata": metadata, "text": plain}
 
 
-eco_lookup = EcoCodeLookup()
-
 with (
     open(INPUT, encoding="utf-8") as f_in,
     open(OUTPUT, "w", encoding="utf-8") as f_out,
@@ -125,9 +119,7 @@ with (
     for i, line in enumerate(f_in):
         raw = json.loads(line)
         try:
-            result = clean_article(
-                raw["wikitext"], title=raw.get("title"), eco_lookup=eco_lookup
-            )
+            result = clean_article(raw["wikitext"], title=raw.get("title"))
             f_out.write(json.dumps(result, ensure_ascii=False) + "\n")
         except Exception as e:
             print(f"[{i}] Failed on '{raw.get('title')}': {e}")

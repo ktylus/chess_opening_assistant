@@ -54,6 +54,5 @@ TODO
 
 ## Data Sources
 
-- ECO codes were sourced from [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings).
 - [Lichess opening explorer](https://lichess.org/api#tag/opening-explorer) accessed through the API.
 - The core opening document set was retrieved from the [Wikibooks Chess Opening Theory Book](https://en.wikibooks.org/wiki/Category:Book:Chess_Opening_Theory). (selected articles)

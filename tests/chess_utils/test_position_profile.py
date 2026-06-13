@@ -1,7 +1,6 @@
 import chess
 import pytest
 
-from src.chess_utils.eco_codes import EcoCodeLookup
 from src.chess_utils.position_profile import (
     CastlingState,
     build_profile,
@@ -12,19 +11,14 @@ RUY_LOPEZ_STANDARD_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5"
 CASTLED_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O"
 
 
-@pytest.fixture(scope="module")
-def eco_lookup():
-    return EcoCodeLookup()
+@pytest.fixture
+def ruy_lopez_profile():
+    return build_profile(RUY_LOPEZ_STANDARD_PGN)
 
 
 @pytest.fixture
-def ruy_lopez_profile(eco_lookup):
-    return build_profile(RUY_LOPEZ_STANDARD_PGN, eco_lookup)
-
-
-@pytest.fixture
-def castled_profile(eco_lookup):
-    return build_profile(CASTLED_PGN, eco_lookup)
+def castled_profile():
+    return build_profile(CASTLED_PGN)
 
 
 def test_ruy_lopez_center(ruy_lopez_profile):
@@ -42,18 +36,13 @@ def test_ruy_lopez_castling(ruy_lopez_profile):
     assert ruy_lopez_profile.castling.black == CastlingState.NOT_YET_BOTH
 
 
-def test_ruy_lopez_eco_code(ruy_lopez_profile):
-    assert ruy_lopez_profile.eco_code == "C60"
-
-
 def test_ruy_lopez_text_output(ruy_lopez_profile):
     text = profile_to_text(ruy_lopez_profile)
     assert text == (
         "## Position Profile\n"
         "Center pawns: e4 (white), e5 (black)\n"
         "Development: White has 2/4 minor pieces developed, Black has 1/4.\n"
-        "Castling — White: not yet castled (both sides available); Black: not yet castled (both sides available)\n"
-        "ECO code: C60"
+        "Castling — White: not yet castled (both sides available); Black: not yet castled (both sides available)"
     )
 
 
@@ -72,16 +61,11 @@ def test_castled_castling(castled_profile):
     assert castled_profile.castling.black == CastlingState.NOT_YET_BOTH
 
 
-def test_castled_eco_code(castled_profile):
-    assert castled_profile.eco_code == "C55"
-
-
 def test_castled_text_output(castled_profile):
     text = profile_to_text(castled_profile)
     assert text == (
         "## Position Profile\n"
         "Center pawns: e4 (white), e5 (black)\n"
         "Development: White has 2/4 minor pieces developed, Black has 2/4.\n"
-        "Castling — White: castled kingside; Black: not yet castled (both sides available)\n"
-        "ECO code: C55"
+        "Castling — White: castled kingside; Black: not yet castled (both sides available)"
     )
