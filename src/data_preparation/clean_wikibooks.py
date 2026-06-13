@@ -112,16 +112,17 @@ def clean_article(wikitext, title=None):
     return {"metadata": metadata, "text": plain}
 
 
-with (
-    open(INPUT, encoding="utf-8") as f_in,
-    open(OUTPUT, "w", encoding="utf-8") as f_out,
-):
-    for i, line in enumerate(f_in):
-        raw = json.loads(line)
-        try:
-            result = clean_article(raw["wikitext"], title=raw.get("title"))
-            f_out.write(json.dumps(result, ensure_ascii=False) + "\n")
-        except Exception as e:
-            print(f"[{i}] Failed on '{raw.get('title')}': {e}")
+if __name__ == "__main__":
+    with (
+        open(INPUT, encoding="utf-8") as f_in,
+        open(OUTPUT, "w", encoding="utf-8") as f_out,
+    ):
+        for i, line in enumerate(f_in):
+            raw = json.loads(line)
+            try:
+                result = clean_article(raw["wikitext"], title=raw.get("title"))
+                f_out.write(json.dumps(result, ensure_ascii=False) + "\n")
+            except Exception as e:
+                print(f"[{i}] Failed on '{raw.get('title')}': {e}")
 
-print(f"Done. Output written to {OUTPUT}")
+    print(f"Done. Output written to {OUTPUT}")
