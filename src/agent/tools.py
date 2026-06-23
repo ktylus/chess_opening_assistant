@@ -11,6 +11,7 @@ from langchain.tools import tool
 from langchain_core.tools import BaseTool
 
 from src.agent.doc_models import OpeningDoc
+from src.agent.prompts import DOC_FORMAT
 from src.chess_utils.board_state import get_position_key_from_fen
 
 
@@ -40,7 +41,7 @@ def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
     if not docs:
         return ""
     formatted = [
-        f"[Document {i + 1}: {doc['metadata']['name']}]\n{doc['text']}"
+        DOC_FORMAT.format(n=i + 1, name=doc["metadata"]["name"], text=doc["text"])
         for i, doc in enumerate(docs)
     ]
     return "\n\n".join(formatted)

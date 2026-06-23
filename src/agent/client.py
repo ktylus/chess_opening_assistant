@@ -13,6 +13,7 @@ from langchain_core.messages import (
 )
 
 from src.agent.chat_models import ChatRequest, MessageRole
+from src.agent.prompt_bundle import PromptBundle, build_bundle
 from src.agent.tools import (
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
@@ -22,10 +23,6 @@ from src.chess_utils.board_state import get_fen_from_pgn
 from src.chess_utils.position_profile import build_profile, profile_to_text
 
 MODEL = "gemini-3.1-flash-lite"
-
-system_prompt = """
-    You are a helpful assistant aiding in learning chess openings.
-"""
 
 
 class Client:
@@ -40,18 +37,23 @@ class Client:
             make_lichess_masters_opening_explorer_tool(fen),
         ]
         status_messages = {at.tool.name: at.status_message for at in agent_tools}
-        agent = create_agent(self.model, tools=[at.tool for at in agent_tools])
+        tools = [at.tool for at in agent_tools]
+        bundle = build_bundle(tools)
+        agent = create_agent(self.model, tools=tools)
         position_context = (
-            f"\n\nCurrent position (PGN): {chat_request.pgn}"
+            bundle.position_context_template.format(pgn=chat_request.pgn)
             if chat_request.pgn
             else ""
         )
-        system_message = SystemMessage(system_prompt + position_context)
+        system_message = SystemMessage(bundle.system_prompt + position_context)
         conversation = self._inject_position_context(
-            self._to_langchain_messages(chat_request), chat_request.pgn, fen
+            self._to_langchain_messages(chat_request), chat_request.pgn, fen, bundle
         )
         messages = {"messages": [system_message] + conversation}
-        async for chunk in agent.astream(messages, stream_mode="messages"):  # type: ignore
+        # Tag the run so the exact prompt bundle that produced it is queryable in
+        # LangSmith (group/filter traces by prompt_version to attribute regressions).
+        config = {"metadata": {"prompt_version": bundle.version, "model": MODEL}}
+        async for chunk in agent.astream(messages, config=config, stream_mode="messages"):  # type: ignore
             msg = chunk[0]  # type: ignore
             if isinstance(msg, AIMessageChunk):
                 text = _chunk_text(msg.content)
@@ -64,7 +66,7 @@ class Client:
 
     @staticmethod
     def _inject_position_context(
-        messages: list[BaseMessage], pgn: str, fen: str
+        messages: list[BaseMessage], pgn: str, fen: str, bundle: PromptBundle
     ) -> list[BaseMessage]:
         """Place context for the current position right before the latest user
         query, so it is adjacent to the question being answered: a structured
@@ -78,28 +80,17 @@ class Client:
 
         context = [
             HumanMessage(
-                "Structured profile of the position currently on the board:\n\n"
-                f"{profile_to_text(build_profile(pgn))}"
+                bundle.profile_preamble.format(
+                    profile=profile_to_text(build_profile(pgn))
+                )
             )
         ]
 
         docs = retrieve_opening_docs(fen)
         if docs:
-            context.append(
-                HumanMessage(
-                    "Relevant opening theory for the position currently on the board:\n\n"
-                    f"{docs}\n\n"
-                    "Use it where helpful when answering the next question."
-                )
-            )
+            context.append(HumanMessage(bundle.docs_preamble.format(docs=docs)))
         else:
-            context.append(
-                HumanMessage(
-                    "No opening theory was retrieved for the position currently on the "
-                    "board. Answer from your own knowledge and say so if the position is "
-                    "outside known opening theory."
-                )
-            )
+            context.append(HumanMessage(bundle.no_docs_fallback))
 
         return messages[:-1] + context + [messages[-1]]
 
