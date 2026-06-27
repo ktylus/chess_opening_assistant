@@ -3,8 +3,13 @@
 This actually calls the agent (Gemini) and the judge (Claude), so it needs API
 keys and costs a little per run. It is a script, not a CI test:
 
-    uv run python -m tests.eval.upload_dataset   # once, and after editing the set
     uv run python -m tests.eval.run_eval
+
+There's no separate build/upload step to remember: the runner rebuilds
+``eval_set.jsonl`` whenever the authored ``eval_set.json`` has changed and
+upserts the LangSmith dataset (idempotent) before every run, so the experiment
+always grades against the current golden set. ``tests.eval.sync`` does the same
+build+upsert on its own, for pushing the dataset without paying for a full eval.
 
 For each example LangSmith runs the agent, then scores tool usage (deterministic)
 and answer quality (LLM judge). Results land in LangSmith as an experiment tied
@@ -28,7 +33,7 @@ from tests.eval.metrics import (
     judge_version,
     score_tool_usage,
 )
-from tests.eval.upload_dataset import DATASET_NAME
+from tests.eval.sync import DATASET_NAME, rebuild_if_stale, sync_dataset
 
 # A Claude judge against the Gemini agent under test, deliberately cross-provider
 # to limit self-preference bias. Lives beside the agent's MODEL it pairs against.
@@ -137,6 +142,16 @@ def _git_sha() -> str:
 
 async def main() -> None:
     load_dotenv()
+
+    # Keep the LangSmith dataset in lockstep with the authored source before the
+    # run. The JSONL is rebuilt only when eval_set.json changed, but the upsert
+    # always fires (it's idempotent), so LangSmith can never silently drift from
+    # what's on disk — no separate build/upload step to forget.
+    if rebuild_if_stale():
+        print("eval_set.json changed; rebuilt eval_set.jsonl.")
+    created, updated = sync_dataset()
+    print(f"Synced dataset '{DATASET_NAME}': {created} created, {updated} updated.")
+
     client = Client()
     judge = make_judge()
 

@@ -8,8 +8,8 @@ cases is meaningless; this test fails loudly if the set drifts that way.
 
 import json
 
-from tests.eval.build_dataset import SOURCE, to_jsonl
 from tests.eval.dataset import DATASET_PATH, load_records
+from tests.eval.sync import SOURCE, to_jsonl
 
 
 def test_dataset_is_wellformed():
@@ -37,4 +37,4 @@ def test_jsonl_is_in_sync_with_json():
     """The JSONL is a build artifact of the JSON; fail if it's stale."""
     expected = to_jsonl(json.loads(SOURCE.read_text(encoding="utf-8")))
     actual = DATASET_PATH.read_text(encoding="utf-8")
-    assert actual == expected, "eval_set.jsonl is stale; run build_dataset"
+    assert actual == expected, "eval_set.jsonl is stale; run tests.eval.sync"
