@@ -7,13 +7,10 @@ Two axes, deliberately kept distinct:
 - ``judge_quality`` (LLM-as-judge): is the answer actually *good* — correct,
   complete, and respectful of the assistant's opening-only scope?
 
-Grounding/faithfulness is intentionally not here yet (deferred); the rubric is
-scoped to answer quality so it stays a clean, separate axis from grounding.
-
 The judge is reference-assisted: it sees the gold answer as a guide but is told
 to reward correct answers that differ in wording. Self-preference bias note: the
 judge model should ideally differ from the agent model; ``run_eval`` is the
-composition root that picks the concrete judge and injects it here.
+composition root that picks the concrete judge model and passes it in.
 """
 
 import hashlib
@@ -22,11 +19,6 @@ from dataclasses import dataclass
 
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
-
-# A Claude judge against the Gemini agent under test, deliberately cross-provider
-# to limit self-preference bias. Lives here, beside the rubric it pairs with, so
-# the judge version can hash both prompt and model together.
-JUDGE_MODEL = "claude-sonnet-4-6"
 
 # --- Routing accuracy (deterministic) ---------------------------------------
 
@@ -51,11 +43,6 @@ def score_routing(expected_tools: list[str], actual_tools: list[str]) -> Routing
 
 # --- Response quality (LLM-as-judge) ----------------------------------------
 
-# The concrete judge model is chosen in ``run_eval`` and passed into
-# ``judge_quality``; this module stays model-agnostic. Bias note: the judge
-# should ideally differ from the agent under test to limit self-preference.
-
-
 class QualityScore(BaseModel):
     """Rubric scores on a 1-5 scale, with a short justification."""
 
@@ -75,15 +62,29 @@ class QualityScore(BaseModel):
 
 _JUDGE_PROMPT = """You are grading a chess-opening assistant's answer.
 
-The assistant is restricted to opening theory (roughly the first 8 moves). For \
-positions that are too deep or otherwise out of scope, the correct behaviour is \
-to decline rather than guess.
+The assistant operates under the instructions below (its system prompt). Judge \
+scope_adherence against these actual rules rather than your own assumptions \
+about what "in scope" means:
+
+--- BEGIN ASSISTANT INSTRUCTIONS ---
+{agent_system_prompt}
+--- END ASSISTANT INSTRUCTIONS ---
+
+The assistant also has access to these tools. An answer that reports their \
+output — e.g. a concrete Stockfish engine evaluation, or master-game \
+statistics — is using a real capability, so do NOT treat such results as \
+hallucinated:
+
+{available_tools}
 
 Score the candidate answer on three axes, each 1 (poor) to 5 (excellent):
-- correctness: is the chess content accurate?
+- correctness: is the chess content accurate? Judge this independently of the \
+instructions above — following the instructions well does not make wrong chess \
+right.
 - completeness: does it actually answer what was asked?
-- scope_adherence: does it stay within opening theory, and decline when the \
-position is out of scope?
+- scope_adherence: does it follow the assistant instructions above — in \
+particular staying within opening theory and declining when the position is \
+out of scope?
 
 Use the reference answer as a guide to what a good response looks like, but \
 reward correct answers that are phrased differently. This position is marked \
@@ -110,6 +111,8 @@ async def judge_quality(
     in_scope: bool,
     reference_answer: str,
     candidate_answer: str,
+    agent_system_prompt: str,
+    available_tools: str,
 ) -> QualityScore:
     structured = judge.with_structured_output(QualityScore)
     prompt = _JUDGE_PROMPT.format(
@@ -118,16 +121,24 @@ async def judge_quality(
         pgn=pgn or "(none)",
         reference_answer=reference_answer,
         candidate_answer=candidate_answer,
+        agent_system_prompt=agent_system_prompt.strip(),
+        available_tools=available_tools,
     )
     return await structured.ainvoke(prompt)  # type: ignore[return-value]
 
 
-def judge_version(model: str = JUDGE_MODEL) -> str:
+def judge_version(model: str) -> str:
     """Content hash of the judge — the rubric prompt plus the judge model.
 
     The judge is part of the measuring instrument: change the rubric or swap the
     model and scores shift, so the version that grades a run is recorded next to
     the prompt version it grades against. Mirrors ``PromptBundle.version``.
+
+    Only the rubric *template* and model are hashed. The agent's system prompt
+    and tool list are injected into the judge at runtime but deliberately left
+    out: that content is the thing under test, already captured by
+    ``prompt_version`` in the run metadata, so folding it in here would just
+    couple the judge's identity to the agent's configuration.
     """
     payload = json.dumps(
         {"judge_prompt": _JUDGE_PROMPT, "judge_model": model},

@@ -24,16 +24,27 @@ from langsmith import aevaluate
 from src.agent.chat_models import ChatRequest, Message, MessageRole
 from src.agent.client import MODEL, Client
 from tests.eval.metrics import (
-    JUDGE_MODEL,
     judge_quality,
     judge_version,
     score_routing,
 )
 from tests.eval.upload_dataset import DATASET_NAME
 
+# A Claude judge against the Gemini agent under test, deliberately cross-provider
+# to limit self-preference bias. Lives beside the agent's MODEL it pairs against.
+JUDGE_MODEL = "claude-sonnet-4-6"
+
+# The judge is pinned to 0 so grading is as reproducible as possible: score drift
+# between runs should come from the agent's behaviour, not the judge's sampling.
+# The agent itself is left on its production (provider-default) temperature so the
+# eval grades the system we actually ship — see the metadata stamped below.
+JUDGE_TEMPERATURE = 0
+
 
 def make_judge(model: str = JUDGE_MODEL) -> BaseChatModel:
-    return init_chat_model(model=model, model_provider="anthropic")
+    return init_chat_model(
+        model=model, model_provider="anthropic", temperature=JUDGE_TEMPERATURE
+    )
 
 
 def make_target(client: Client):
@@ -68,7 +79,21 @@ def routing_evaluator(outputs: dict, reference_outputs: dict) -> dict:
 # run outputs and feedback share one multipart batch, a rejected batch also drops
 # the model response. Scores ride the 1-5 rubric; the range is documented on
 # QualityScore, not enforced by LangSmith.
-def make_quality_evaluator(judge: BaseChatModel):
+def _format_tools(tool_descriptions: dict[str, str]) -> str:
+    """Render the agent's live tool descriptions as a list for the judge prompt.
+
+    Reads from the prompt bundle's ``tool_descriptions`` — the same dict the
+    agent is actually built from — so the judge can never be told about a tool
+    the agent doesn't have, or miss one it does.
+    """
+    return "\n".join(
+        f"- {name}: {desc.strip()}" for name, desc in tool_descriptions.items()
+    )
+
+
+def make_quality_evaluator(
+    judge: BaseChatModel, agent_system_prompt: str, available_tools: str
+):
     """LLM-as-judge over the rubric, returning one feedback per axis plus an
     overall, with the judge's reasoning attached as a comment."""
 
@@ -82,6 +107,8 @@ def make_quality_evaluator(judge: BaseChatModel):
             in_scope=reference_outputs["in_scope"],
             reference_answer=reference_outputs["reference_answer"],
             candidate_answer=outputs["answer"],
+            agent_system_prompt=agent_system_prompt,
+            available_tools=available_tools,
         )
         return [
             {"key": "correctness", "score": score.correctness},
@@ -111,20 +138,34 @@ async def main() -> None:
     client = Client()
     judge = make_judge()
 
+    # The judge grades against what the agent was actually given: its system
+    # prompt (the real scope rules) and its live tool set (so engine/explorer
+    # output isn't mistaken for hallucination). Both come from the same bundle.
+    bundle = client.prompt_bundle()
+    agent_system_prompt = bundle.system_prompt
+    available_tools = _format_tools(bundle.tool_descriptions)
+
     # Run-level provenance: the join keys that let any result be traced back to
     # the exact configuration that produced it (prompt elements, judge, model).
     metadata = {
-        "prompt_version": client.prompt_bundle().version,
+        "prompt_version": bundle.version,
         "model": MODEL,
+        # The agent isn't pinned; it runs on the provider default (what we ship).
+        # Recorded explicitly so a run's sampling config is part of its provenance.
+        "agent_temperature": "provider default",
         "judge_model": JUDGE_MODEL,
-        "judge_version": judge_version(),
+        "judge_version": judge_version(JUDGE_MODEL),
+        "judge_temperature": JUDGE_TEMPERATURE,
         "git_sha": _git_sha(),
     }
 
     results = await aevaluate(
         make_target(client),
         data=DATASET_NAME,
-        evaluators=[routing_evaluator, make_quality_evaluator(judge)],  # type: ignore
+        evaluators=[
+            routing_evaluator,
+            make_quality_evaluator(judge, agent_system_prompt, available_tools),  # type: ignore
+        ],
         metadata=metadata,
         experiment_prefix="chess-opening",
         # Sequential: keeps within API rate limits and is easy to read in logs.
