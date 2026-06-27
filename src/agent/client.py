@@ -145,7 +145,7 @@ class Client:
         messages = prepared.messages
         config = prepared.config
         status_messages = prepared.status_messages
-        async for chunk in agent.astream( # type: ignore
+        async for chunk in agent.astream(  # type: ignore
             messages, config=config, stream_mode="messages"
         ):  # type: ignore
             msg = chunk[0]  # type: ignore

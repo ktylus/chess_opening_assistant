@@ -43,6 +43,7 @@ def score_routing(expected_tools: list[str], actual_tools: list[str]) -> Routing
 
 # --- Response quality (LLM-as-judge) ----------------------------------------
 
+
 class QualityScore(BaseModel):
     """Rubric scores on a 1-5 scale, with a short justification."""
 
