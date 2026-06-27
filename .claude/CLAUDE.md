@@ -5,9 +5,3 @@ The idea is to ask questions about the position currently on the chessboard. The
 The system will be supported by relevant documents allowing for augmenting the context by precise retrieval.
 
 The environment is controlled with `uv`. Git bash is available for bash execution.
-
-Stack (probably):
-- a bigger model as a main LLM
-- Gemini 3.1 Flash Lite (fast, cheap LLM for evals)
-- LangChain + LangGraph (orchestration)
-- FastAPI (backend)
