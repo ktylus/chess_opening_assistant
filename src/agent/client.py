@@ -57,12 +57,27 @@ class Client:
         load_dotenv()
         self.model = init_chat_model(model=MODEL, model_provider="google_genai")
 
-    def _prepare(self, chat_request: ChatRequest) -> PreparedRun:
-        fen = get_fen_from_pgn(chat_request.pgn)
-        agent_tools = [
+    @staticmethod
+    def _make_agent_tools(fen: str) -> list:
+        """The agent's tool set for a position. Single source of truth, so the
+        prompt bundle hashes exactly the tools the agent is actually given."""
+        return [
             make_stockfish_eval_tool(fen),
             make_lichess_masters_opening_explorer_tool(fen),
         ]
+
+    def prompt_bundle(self) -> PromptBundle:
+        """The active prompt bundle (prompt text + live tool descriptions).
+
+        Tool descriptions are static, so any position yields the same bundle; the
+        eval harness uses ``.version`` to stamp runs with the prompt under test.
+        """
+        tools = [at.tool for at in self._make_agent_tools(get_fen_from_pgn(""))]
+        return build_bundle(tools)
+
+    def _prepare(self, chat_request: ChatRequest) -> PreparedRun:
+        fen = get_fen_from_pgn(chat_request.pgn)
+        agent_tools = self._make_agent_tools(fen)
         status_messages = {at.tool.name: at.status_message for at in agent_tools}
         tools = [at.tool for at in agent_tools]
         bundle = build_bundle(tools)

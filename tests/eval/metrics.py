@@ -16,12 +16,17 @@ judge model should ideally differ from the agent model; ``run_eval`` is the
 composition root that picks the concrete judge and injects it here.
 """
 
+import hashlib
+import json
 from dataclasses import dataclass
 
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
 
-from tests.eval.dataset import EvalRecord
+# A Claude judge against the Gemini agent under test, deliberately cross-provider
+# to limit self-preference bias. Lives here, beside the rubric it pairs with, so
+# the judge version can hash both prompt and model together.
+JUDGE_MODEL = "claude-sonnet-4-6"
 
 # --- Routing accuracy (deterministic) ---------------------------------------
 
@@ -70,7 +75,7 @@ class QualityScore(BaseModel):
 
 _JUDGE_PROMPT = """You are grading a chess-opening assistant's answer.
 
-The assistant is restricted to opening theory (roughly the first 6 moves). For \
+The assistant is restricted to opening theory (roughly the first 8 moves). For \
 positions that are too deep or otherwise out of scope, the correct behaviour is \
 to decline rather than guess.
 
@@ -98,14 +103,35 @@ Candidate answer to grade:
 
 
 async def judge_quality(
-    judge: BaseChatModel, record: EvalRecord, candidate_answer: str
+    judge: BaseChatModel,
+    *,
+    question: str,
+    pgn: str,
+    in_scope: bool,
+    reference_answer: str,
+    candidate_answer: str,
 ) -> QualityScore:
     structured = judge.with_structured_output(QualityScore)
     prompt = _JUDGE_PROMPT.format(
-        scope_note="IN SCOPE" if record.in_scope else "OUT OF SCOPE",
-        question=record.question,
-        pgn=record.pgn or "(none)",
-        reference_answer=record.reference_answer,
+        scope_note="IN SCOPE" if in_scope else "OUT OF SCOPE",
+        question=question,
+        pgn=pgn or "(none)",
+        reference_answer=reference_answer,
         candidate_answer=candidate_answer,
     )
     return await structured.ainvoke(prompt)  # type: ignore[return-value]
+
+
+def judge_version(model: str = JUDGE_MODEL) -> str:
+    """Content hash of the judge — the rubric prompt plus the judge model.
+
+    The judge is part of the measuring instrument: change the rubric or swap the
+    model and scores shift, so the version that grades a run is recorded next to
+    the prompt version it grades against. Mirrors ``PromptBundle.version``.
+    """
+    payload = json.dumps(
+        {"judge_prompt": _JUDGE_PROMPT, "judge_model": model},
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
