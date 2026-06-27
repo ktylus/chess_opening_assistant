@@ -31,6 +31,7 @@ SYSTEM_PROMPT = """
     Sequences provided by the user should be 8 moves or less.
     If they are longer, we can assume the position to be a middlegame, or an endgame,
     in which case you should be very clear that such use cases are out of scope.
+    In that case, you have to refuse answering citing this reason.
     However, if a long sequence is supported by a retrieved document matching the
     board state exactly (some widely known lines are longer than 8 moves), then
     proceed with an answer.
