@@ -39,17 +39,9 @@ from tests.eval.sync import DATASET_NAME, rebuild_if_stale, sync_dataset
 # to limit self-preference bias. Lives beside the agent's MODEL it pairs against.
 JUDGE_MODEL = "claude-opus-4-8"
 
-# The judge is pinned to 0 so grading is as reproducible as possible: score drift
-# between runs should come from the agent's behaviour, not the judge's sampling.
-# The agent itself is left on its production (provider-default) temperature so the
-# eval grades the system we actually ship — see the metadata stamped below.
-JUDGE_TEMPERATURE = 0
-
 
 def make_judge(model: str = JUDGE_MODEL) -> BaseChatModel:
-    return init_chat_model(
-        model=model, model_provider="anthropic", temperature=JUDGE_TEMPERATURE
-    )
+    return init_chat_model(model=model, model_provider="anthropic")
 
 
 def make_target(client: Client):
@@ -172,7 +164,7 @@ async def main() -> None:
         "agent_temperature": "provider default",
         "judge_model": JUDGE_MODEL,
         "judge_version": judge_version(JUDGE_MODEL),
-        "judge_temperature": JUDGE_TEMPERATURE,
+        "judge_temperature": "provider default",
         "git_sha": _git_sha(),
     }
 
