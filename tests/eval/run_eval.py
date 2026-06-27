@@ -6,7 +6,7 @@ keys and costs a little per run. It is a script, not a CI test:
     uv run python -m tests.eval.upload_dataset   # once, and after editing the set
     uv run python -m tests.eval.run_eval
 
-For each example LangSmith runs the agent, then scores routing (deterministic)
+For each example LangSmith runs the agent, then scores tool usage (deterministic)
 and answer quality (LLM judge). Results land in LangSmith as an experiment tied
 to the dataset version, stamped with the prompt and judge versions under test, so
 every run is queryable by exactly what produced it: dataset rows, prompt
@@ -26,7 +26,7 @@ from src.agent.client import MODEL, Client
 from tests.eval.metrics import (
     judge_quality,
     judge_version,
-    score_routing,
+    score_tool_usage,
 )
 from tests.eval.upload_dataset import DATASET_NAME
 
@@ -67,10 +67,12 @@ def make_target(client: Client):
     return run_agent
 
 
-def routing_evaluator(outputs: dict, reference_outputs: dict) -> dict:
-    """Deterministic: did the agent fire exactly the tools it should have?"""
-    result = score_routing(reference_outputs["expected_tools"], outputs["tool_calls"])
-    return {"key": "routing", "score": result.passed}
+def tool_usage_evaluator(outputs: dict, reference_outputs: dict) -> dict:
+    """Deterministic: did the agent fire every tool it was expected to?"""
+    result = score_tool_usage(
+        reference_outputs["expected_tools"], outputs["tool_calls"]
+    )
+    return {"key": "tool_usage", "score": result.passed}
 
 
 # Feedback keys are left as unbounded continuous (configured once in the
@@ -163,7 +165,7 @@ async def main() -> None:
         make_target(client),
         data=DATASET_NAME,
         evaluators=[
-            routing_evaluator,
+            tool_usage_evaluator,
             make_quality_evaluator(judge, agent_system_prompt, available_tools),  # type: ignore
         ],
         metadata=metadata,

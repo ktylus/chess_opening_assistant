@@ -2,8 +2,8 @@
 
 Two axes, deliberately kept distinct:
 
-- ``score_routing`` (deterministic): did the agent's control flow do the right
-  thing — call the tools it should have, and only those? No LLM, no cost.
+- ``score_tool_usage`` (deterministic): did the agent's control flow do the right
+  thing — call the tools it was expected to? No LLM, no cost.
 - ``judge_quality`` (LLM-as-judge): is the answer actually *good* — correct,
   complete, and respectful of the assistant's opening-only scope?
 
@@ -20,25 +20,28 @@ from dataclasses import dataclass
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
 
-# --- Routing accuracy (deterministic) ---------------------------------------
+# --- Tool usage (deterministic) ---------------------------------------------
 
 
 @dataclass
-class RoutingResult:
+class ToolUsageResult:
     expected: list[str]
     actual: list[str]
     passed: bool
 
 
-def score_routing(expected_tools: list[str], actual_tools: list[str]) -> RoutingResult:
-    """Exact set match between expected and actually-called model tools.
+def score_tool_usage(
+    expected_tools: list[str], actual_tools: list[str]
+) -> ToolUsageResult:
+    """Did the agent call every tool it was expected to?
 
-    Set (not list) comparison: order and duplicate calls don't matter, only
-    *which* tools fired. An empty expected set means the agent should answer
-    without calling any tool.
+    Subset (not exact) set comparison: every expected tool must have fired, but
+    extra tool calls are fine — overcalling isn't penalised here, only failing to
+    use a tool the task required. Order and duplicate calls don't matter. An
+    empty expected set always passes (nothing was required).
     """
-    passed = set(expected_tools) == set(actual_tools)
-    return RoutingResult(expected=expected_tools, actual=actual_tools, passed=passed)
+    passed = set(expected_tools) <= set(actual_tools)
+    return ToolUsageResult(expected=expected_tools, actual=actual_tools, passed=passed)
 
 
 # --- Response quality (LLM-as-judge) ----------------------------------------

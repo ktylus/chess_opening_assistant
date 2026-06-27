@@ -2,7 +2,7 @@
 
 These guard the dataset *contract* (so the harness can rely on it) and, just as
 importantly, assert that the set actually exercises the decision boundaries the
-metrics are meant to measure. A routing metric over a set with no negative
+metrics are meant to measure. A tool-usage metric over a set with no negative
 cases is meaningless; this test fails loudly if the set drifts that way.
 """
 
