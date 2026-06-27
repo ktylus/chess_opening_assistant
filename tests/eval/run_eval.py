@@ -37,7 +37,7 @@ from tests.eval.sync import DATASET_NAME, rebuild_if_stale, sync_dataset
 
 # A Claude judge against the Gemini agent under test, deliberately cross-provider
 # to limit self-preference bias. Lives beside the agent's MODEL it pairs against.
-JUDGE_MODEL = "claude-sonnet-4-6"
+JUDGE_MODEL = "claude-opus-4-8"
 
 # The judge is pinned to 0 so grading is as reproducible as possible: score drift
 # between runs should come from the agent's behaviour, not the judge's sampling.
