@@ -58,5 +58,65 @@
             "in_scope": true,
             "reference_answer": "Black's idea is to develop the dark-squared bishop to g7, develop the knight and castle kingside."
         }
+    },
+    {
+        "id": "halloween-gambit-1",
+        "input": {
+            "question": "What is the critical idea here for white? What is white's compensation for the sacrificed piece?",
+            "pgn": "1. e4 e5 2. Nf3 Nc6 3. Nc3 Nf6 4. Nxe5 Nxe5"
+        },
+        "labels": {
+            "expected_tools": ["evaluate_position_with_stockfish"],
+            "in_scope": true,
+            "reference_answer": "White's critical idea is to gain a lot of space by pushing d4. After black retreats with the knight, white will push e5 and the other black knight will have to retreat to g8, its' home square, undeveloping the piece. White's compensation is in part based on that fact and on a substantial space advantage."
+        }
+    },
+    {
+        "id": "marshall-attack-1",
+        "input": {
+            "question": "I've seen this deep opening line many times. Is it popular? What is black's idea with this aggressive move?",
+            "pgn": "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5"
+        },
+        "labels": {
+            "expected_tools": ["get_lichess_masters_opening_data", "evaluate_position_with_stockfish"],
+            "in_scope": true,
+            "reference_answer": "After simplifications, white is left with an underdeveloped queenside and black has a natural attack on the castled king. However, white remains pawn up and should be able to defend with precise play."
+        }
+    },
+    {
+        "id": "marshall-attack-2",
+        "input": {
+            "question": "Why is white fine here in high-level games? The attack seems strong for black. What are white's defensive ideas?",
+            "pgn": "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5 9. exd5 Nxd5 10. Nxe5 Nxe5 11. Rxe5 c6 12. d4 Bd6 13. Re1 Qh4 14. g3 Qh3"
+        },
+        "labels": {
+            "expected_tools": ["evaluate_position_with_stockfish"],
+            "in_scope": true,
+            "reference_answer": "The only immediate attacking plan black has is to bring the light-square bishop to f3, setting up a mate. However, white can easily defend this."
+        }
+    },
+    {
+        "id": "traxler-1",
+        "input": {
+            "question": "What are black's ideas here if white is not careful?",
+            "pgn": "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 Bc5"
+        },
+        "labels": {
+            "expected_tools": [],
+            "in_scope": true,
+            "reference_answer": "If white takes f7 with a knight, black is looking to sacrifice the bishop on f2, after which he will take the e4 pawn with a knight, with a check. A dangerous attack ensues."
+        }
+    },
+    {
+        "id": "najdorf-1",
+        "input": {
+            "question": "What is white planning with his last move? What might black's counterplay be?",
+            "pgn": "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3"
+        },
+        "labels": {
+            "expected_tools": [],
+            "in_scope": true,
+            "reference_answer": "With Be3, white plans to castle queenside, which will enable him to launch kingside pawns forward. Black's counterplay might be centered around doing the same thing against white's soon-to-be-castled king on the queenside."
+        }
     }
 ]
