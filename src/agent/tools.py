@@ -41,7 +41,9 @@ def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
     if not docs:
         return ""
     formatted = [
-        DOC_FORMAT.format(n=i + 1, name=doc["metadata"]["name"], text=doc["text"])
+        DOC_FORMAT.format(
+            n=i + 1, name=doc["metadata"].get("name", ""), text=doc["text"]
+        )
         for i, doc in enumerate(docs)
     ]
     return "\n\n".join(formatted)
