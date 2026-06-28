@@ -13,15 +13,15 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
-from src.agent.chat_models import ChatRequest, MessageRole
-from src.agent.prompt_bundle import PromptBundle, build_bundle
-from src.agent.tools import (
+from backend.agent.chat_models import ChatRequest, MessageRole
+from backend.agent.prompt_bundle import PromptBundle, build_bundle
+from backend.agent.tools import (
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
     retrieve_opening_docs,
 )
-from src.chess_utils.board_state import get_fen_from_pgn
-from src.chess_utils.position_profile import build_profile, profile_to_text
+from backend.chess_utils.board_state import get_fen_from_pgn
+from backend.chess_utils.position_profile import build_profile, profile_to_text
 
 MODEL = "gemini-3.5-flash"
 

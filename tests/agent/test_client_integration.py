@@ -1,7 +1,7 @@
 import pytest
 
-from src.agent.chat_models import ChatRequest, Message, MessageRole
-from src.agent.client import Client
+from backend.agent.chat_models import ChatRequest, Message, MessageRole
+from backend.agent.client import Client
 
 
 @pytest.fixture

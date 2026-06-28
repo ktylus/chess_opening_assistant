@@ -1,6 +1,6 @@
 import pytest
 
-from src.chess_utils.board_state import get_fen_from_pgn
+from backend.chess_utils.board_state import get_fen_from_pgn
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 

@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.tools import (
+from backend.agent.tools import (
     STOCKFISH_LINES,
     _find_docs_for_position,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
 )
-from src.chess_utils.board_state import get_position_key_from_fen
+from backend.chess_utils.board_state import get_position_key_from_fen
 
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 

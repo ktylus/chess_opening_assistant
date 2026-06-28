@@ -16,7 +16,7 @@ import json
 
 from langchain_core.tools import BaseTool
 
-from src.agent import prompts
+from backend.agent import prompts
 
 
 class PromptBundle:

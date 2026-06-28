@@ -1,4 +1,4 @@
-from src.data_preparation.clean_wikibooks import epd_from_moves
+from backend.data_preparation.clean_wikibooks import epd_from_moves
 
 # Italian Game: 1. e4 e5 2. Nf3 Nc6 3. Bc4
 # Both sides have all castling rights intact after 3 moves.

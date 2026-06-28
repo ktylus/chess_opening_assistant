@@ -26,8 +26,8 @@ from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langsmith import aevaluate
 
-from src.agent.chat_models import ChatRequest, Message, MessageRole
-from src.agent.client import MODEL, Client
+from backend.agent.chat_models import ChatRequest, Message, MessageRole
+from backend.agent.client import MODEL, Client
 from tests.eval.metrics import (
     judge_quality,
     judge_version,

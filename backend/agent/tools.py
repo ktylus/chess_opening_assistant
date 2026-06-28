@@ -10,9 +10,9 @@ import requests
 from langchain.tools import tool
 from langchain_core.tools import BaseTool
 
-from src.agent.doc_models import OpeningDoc
-from src.agent.prompts import DOC_FORMAT
-from src.chess_utils.board_state import get_position_key_from_fen
+from backend.agent.doc_models import OpeningDoc
+from backend.agent.prompts import DOC_FORMAT
+from backend.chess_utils.board_state import get_position_key_from_fen
 
 
 @dataclass

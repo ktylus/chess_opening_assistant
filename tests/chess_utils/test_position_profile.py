@@ -1,7 +1,7 @@
 import chess
 import pytest
 
-from src.chess_utils.position_profile import (
+from backend.chess_utils.position_profile import (
     CastlingState,
     build_profile,
     profile_to_text,
