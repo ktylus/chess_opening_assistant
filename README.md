@@ -43,7 +43,7 @@ each with its own dependency manifest and lockfile.
 
 ### Prerequisites
 
-- [`uv`](https://docs.astral.sh/uv/) (Python tooling - manages the env and Python version)
+- [uv](https://docs.astral.sh/uv/) (Python tooling - manages the env and Python version)
 - [Node.js](https://nodejs.org/) 18+ (ships with `npm`)
 - A [Stockfish](https://stockfishchess.org/download/) binary for engine evaluation
 
@@ -56,8 +56,8 @@ Create a `.env` file and fill out the details using `.env.example` as reference.
 One-time install of dependencies after cloning:
 
 ```bash
-uv sync                    # build the Python .venv from uv.lock
-cd src/frontend && npm ci  # install frontend deps from package-lock.json
+uv sync                  # build the Python .venv from uv.lock
+cd frontend && npm ci    # install frontend deps from package-lock.json
 ```
 
 ### Running
@@ -69,14 +69,11 @@ uv run uvicorn api:app --reload    # backend on http://localhost:8000
 ```
 
 ```bash
-cd src/frontend && npm run dev     # frontend on http://localhost:5173
+cd frontend && npm run dev     # frontend on http://localhost:5173
 ```
 
 The Vite dev server proxies `/chat` to the backend on port 8000, so run both
 together and open the frontend URL in your browser.
-
-Alternatively, once set up, run `start.sh` to launch both at once
-(requires bash - native on macOS/Linux, git bash or WSL on Windows).
 
 
 ## Data Sources
