@@ -9,13 +9,17 @@ A record separates three lifecycles (mirrored in the JSON structure):
   fills it in by actually running the agent.
 
 This module only deals with the first two.
+
+``eval_set.json`` is the single source of truth: a hand-authored array that we
+parse straight into typed records in memory. There is no derived on-disk
+artifact — the loaded ``list[EvalRecord]`` is what gets passed around.
 """
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
-DATASET_PATH = Path(__file__).parent / "eval_set.jsonl"
+DATASET_PATH = Path(__file__).parent / "eval_set.json"
 
 
 @dataclass(frozen=True)
@@ -41,5 +45,5 @@ class EvalRecord:
 
 
 def load_records(path: Path = DATASET_PATH) -> list[EvalRecord]:
-    with open(path, encoding="utf-8") as f:
-        return [EvalRecord.from_dict(json.loads(line)) for line in f if line.strip()]
+    records = json.loads(path.read_text(encoding="utf-8"))
+    return [EvalRecord.from_dict(record) for record in records]

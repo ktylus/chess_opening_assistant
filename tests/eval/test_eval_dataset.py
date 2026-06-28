@@ -6,10 +6,7 @@ metrics are meant to measure. A tool-usage metric over a set with no negative
 cases is meaningless; this test fails loudly if the set drifts that way.
 """
 
-import json
-
-from tests.eval.dataset import DATASET_PATH, load_records
-from tests.eval.sync import SOURCE, to_jsonl
+from tests.eval.dataset import load_records
 
 
 def test_dataset_is_wellformed():
@@ -31,10 +28,3 @@ def test_dataset_covers_decision_boundaries():
     assert any(not r.in_scope for r in records), "no out-of-scope (negative) case"
     assert any(r.expected_tools == [] for r in records), "no no-tool case"
     assert any(r.expected_tools for r in records), "no tool-use case"
-
-
-def test_jsonl_is_in_sync_with_json():
-    """The JSONL is a build artifact of the JSON; fail if it's stale."""
-    expected = to_jsonl(json.loads(SOURCE.read_text(encoding="utf-8")))
-    actual = DATASET_PATH.read_text(encoding="utf-8")
-    assert actual == expected, "eval_set.jsonl is stale; run tests.eval.sync"
