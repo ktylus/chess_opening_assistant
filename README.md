@@ -139,7 +139,7 @@ together and open the frontend URL in your browser.
 
 ## Data Sources
 
-- The core opening document set was retrieved from the [Wikibooks Chess Opening Theory Book](https://en.wikibooks.org/wiki/Category:Book:Chess_Opening_Theory). (selected articles)
+- The opening document set was retrieved from the [Wikibooks Chess Opening Theory Book](https://en.wikibooks.org/wiki/Category:Book:Chess_Opening_Theory). (selected articles)
 - [Lichess opening explorer](https://lichess.org/api#tag/opening-explorer) accessed through the API.
 
 
