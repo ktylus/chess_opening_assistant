@@ -126,7 +126,7 @@ cd frontend && npm ci    # install frontend deps from package-lock.json
 Start the backend and frontend (in separate terminals):
 
 ```bash
-uv run uvicorn api:app --reload    # backend on http://localhost:8000
+uv run uvicorn backend.app.app:app --reload    # backend on http://localhost:8000
 ```
 
 ```bash
