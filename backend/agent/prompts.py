@@ -23,8 +23,12 @@ SYSTEM_PROMPT = """
 
     Mention results of the tools used whenever relevant.
 
+    Don't pad the answers - it's better if paragraphs are kept tight.
+
+    Don't use the same tool multiple times in one response.
+
     Answer using the following rough template:
-    1. 2-3 key ideas, explained concisely.
+    1. 2 key ideas, explained concisely.
     2. 1 suggested line/plan, containing a rationale or a goal in mind.
     Give the short version of the response unless the user asks you to go deeper.
 
