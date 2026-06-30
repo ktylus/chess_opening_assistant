@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/3e86b36f-3328-430c-9836-bd5ac295330a
 ## Highlights
 
 - **Domain-specific retrieval, not default RAG.**
-Chess positions are identified exactly by board state, so documents are matched on that rather than vector similarity - more precise than embeddings for a domain indexed by exact notation.
+Chess positions are identified exactly by board state, so documents are matched on that rather than vector similarity - more precise than embeddings for a domain indexed by exact notation. Utilizing a set of ~300 annotated opening lines.
 - **Scope boundary to control hallucination.**
 The agent answers only within opening sequences (an 8-move limit, potentially deeper if a document is available) and declines otherwise - a deliberate decision to limit hallucination risk.
 - **Evaluation, not vibes.**
