@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
+// The model wraps chess notation in LaTeX-style `$...$` delimiters, which
+// react-markdown leaves as literal text. Convert them to inline code instead.
+function normalizeContent(content) {
+  return content.replace(/\$([^$\n]+?)\$/g, '`$1`')
+}
+
 export default function Chat({ messages, onSend, loading }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
@@ -27,7 +33,7 @@ export default function Chat({ messages, onSend, loading }) {
           <div key={i} className={`message ${msg.role}`}>
             <span className="message-role">{msg.role === 'user' ? 'You' : 'Assistant'}</span>
             <div className="message-content">
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <ReactMarkdown>{normalizeContent(msg.content)}</ReactMarkdown>
             </div>
           </div>
         ))}
