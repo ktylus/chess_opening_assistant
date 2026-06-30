@@ -9,7 +9,7 @@ LLMs are notoriously weak at calculating chess - so this assistant uses large vo
 
 ## Demo
 
-TODO
+https://github.com/user-attachments/assets/3e86b36f-3328-430c-9836-bd5ac295330a
 
 
 ## Highlights
