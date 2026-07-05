@@ -1,6 +1,4 @@
-# Position profiling: extracts structured opening features from a PGN move sequence.
-# PGN is preferred over FEN — opening lines are naturally expressed as move sequences.
-# These features are injected into the system prompt to enrich LLM context.
+"""Extracts structured opening features from a position."""
 
 import io
 from dataclasses import dataclass
@@ -41,7 +39,6 @@ class CastlingStatus:
 
 @dataclass
 class PositionProfile:
-    # Which of e4/d4/e5/d5 are occupied and by whom; value is chess.WHITE or chess.BLACK
     center_pawns: dict[str, chess.Color]  # e.g. {"e4": chess.WHITE, "d5": chess.BLACK}
     # Number of minor pieces no longer on their starting squares
     white_developed: int
@@ -104,7 +101,7 @@ def _castling_status(board: chess.Board) -> CastlingStatus:
 
 
 def build_profile(pgn: str) -> PositionProfile:
-    # Mirror get_fen_from_pgn: an empty PGN is the starting position, not an error.
+    # An empty PGN is the starting position, not an error.
     if not pgn.strip():
         board = chess.Board()
     else:

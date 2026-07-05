@@ -92,8 +92,6 @@ class Client:
             self._to_langchain_messages(chat_request), chat_request.pgn, fen, bundle
         )
         messages = {"messages": [system_message] + conversation}
-        # Tag the run so the exact prompt bundle that produced it is queryable in
-        # LangSmith (group/filter traces by prompt_version to attribute regressions).
         config = {"metadata": {"prompt_version": bundle.version, "model": MODEL}}
         return PreparedRun(
             agent=agent,
