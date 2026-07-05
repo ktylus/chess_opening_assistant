@@ -5,7 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/chat': 'http://localhost:8000'
+      // Backend runs under a different host in Docker (service name) than in
+      // local dev (localhost), so make the target configurable.
+      '/chat': process.env.BACKEND_URL || 'http://localhost:8000'
     }
   }
 })

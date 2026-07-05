@@ -1,0 +1,10 @@
+# Backend context is the entire repo root,
+# which is why this file is kept there.
+.venv
+frontend/node_modules
+.git
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+.env

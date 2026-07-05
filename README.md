@@ -63,6 +63,7 @@ Stack:
 - Pydantic - structured tool I/O and response schemas
 - python-chess - move validation, chess engine support, PGN parsing
 - LangSmith - evaluation logging/tracking, debugging
+- Docker Compose - running frontend and backend together, minimising setup
 
 ### Core idea
 
@@ -99,42 +100,25 @@ Known limitations:
 
 ## Usage
 
-The project is split into a Python backend (FastAPI) and a React frontend (Vite),
-each with its own dependency manifest and lockfile.
+The project is split into a Python backend (FastAPI) and a React frontend (Vite).
+Docker Compose builds and runs both together - uv, Node, and Stockfish all live
+inside the images, so nothing else needs installing.
 
 ### Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) (Python tooling - manages the env and Python version)
-- [Node.js](https://nodejs.org/) 18+ (ships with `npm`)
-- A [Stockfish](https://stockfishchess.org/download/) binary for engine evaluation
+- [Docker](https://docs.docker.com/get-docker/) (Docker Desktop bundles Compose)
 
 ### Environment variables
 
 Create a `.env` file and fill out the details using `.env.example` as reference.
 
-### Setup
-
-One-time install of dependencies after cloning:
-
-```bash
-uv sync                  # build the Python .venv from uv.lock
-cd frontend && npm ci    # install frontend deps from package-lock.json
-```
-
 ### Running
 
-Start the backend and frontend (in separate terminals):
-
 ```bash
-uv run uvicorn backend.app.app:app --reload    # backend on http://localhost:8000
+docker compose up --build      # build images and start both services
 ```
 
-```bash
-cd frontend && npm run dev     # frontend on http://localhost:5173
-```
-
-The Vite dev server proxies `/chat` to the backend on port 8000, so run both
-together and open the frontend URL in your browser.
+Open http://localhost:5173. Stop with `Ctrl-C`, or `docker compose down` to remove the containers.
 
 
 ## Data Sources
