@@ -1,12 +1,7 @@
-"""Model-facing prompt text, kept as the single source of truth.
+"""Model-facing prompt text: every author-written string the model reads.
 
-Every author-written string the model reads lives here as a constant or a
-named template. The prompt bundle (see ``prompt_bundle.py``) collects these
-plus the tool descriptions and hashes them into one version id, so anything in
-this file changing moves the version that gets attached to each traced run.
-
-User-facing copy (e.g. tool status messages) deliberately does NOT live here:
-it never reaches the model, so it must not affect the prompt version.
+User-facing copy (e.g. tool status messages) deliberately does NOT live here,
+since it never reaches the model.
 """
 
 SYSTEM_PROMPT = """

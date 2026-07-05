@@ -1,14 +1,9 @@
-"""Assembles every model-facing prompt surface into one versioned artifact.
+"""Collects the model-facing prompt text and tool descriptions into a single
+immutable, content-hashed ``PromptBundle``.
 
-Approach (B): nothing is moved into a stored data file. Tool descriptions stay
-as docstrings and are read at runtime via ``tool.description``; the prompt text
-stays in ``prompts.py``. ``build_bundle`` collects all of it into an immutable
-``PromptBundle`` and derives a content hash, so a single ``version`` id covers
-the whole bundle. Attach that id as run metadata (LangSmith) and any tone or
-length regression can be attributed to the exact bundle that produced it.
-
-The hash is the source of truth for the version: it can't drift from what runs,
-and needs no manual bumping.
+The prompt text comes from ``prompts.py`` and the tool descriptions are read off
+the live tool objects. The content hash is the ``version`` id, so it can't drift
+from what actually runs.
 """
 
 import hashlib
@@ -56,11 +51,7 @@ class PromptBundle:
 
 
 def build_bundle(tools: list[BaseTool]) -> PromptBundle:
-    """Collect the prompt text plus the agent's tool descriptions into a bundle.
-
-    Tool descriptions are read off the live tool objects, so whatever the agent
-    actually sees is what gets hashed.
-    """
+    """Build a bundle from the prompt text and the given tools' descriptions."""
     tool_descriptions = {t.name: t.description for t in tools}
     return PromptBundle(tool_descriptions=tool_descriptions)
 

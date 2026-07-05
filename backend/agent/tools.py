@@ -29,14 +29,8 @@ LICHESS_TOP_MOVES = 5
 
 
 def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
-    """
-    Retrieve and format opening docs for the given board position.
-
-    Unlike the engine/explorer tools, this is not an agent tool: retrieval is
-    driven by the position rather than chosen by the model, so the caller injects
-    the result into context for every position. Returns an empty string when no
-    documents match the position.
-    """
+    """Retrieve and format opening docs for the given board position, or return
+    an empty string when no documents match."""
     docs = _find_docs_for_position(fen, docs_path)
     if not docs:
         return ""

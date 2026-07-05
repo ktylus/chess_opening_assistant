@@ -54,11 +54,8 @@ def extract_main_prose(wikitext):
 
 
 def epd_from_moves(moves_str):
-    """Return the EPD after playing through a space-separated move sequence.
-
-    EPD is the FEN without the move counters, so it serves as a position-identity
-    key that matches across transpositions when looking docs up at query time.
-    """
+    """Return the EPD after playing through a space-separated move sequence,
+    or None if the sequence is empty or contains an illegal move."""
     if not moves_str:
         return None
     board = chess.Board()

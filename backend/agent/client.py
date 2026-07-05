@@ -28,12 +28,10 @@ MODEL = "gemini-3.5-flash"
 
 @dataclass
 class PreparedRun:
-    """Everything needed to drive one agent turn, plus the context fed into it.
+    """Everything needed to drive one agent turn.
 
-    ``retrieved_docs`` is the opening theory injected for this position (the
-    deterministic, position-driven retrieval). It is surfaced here — rather than
-    buried inside the message list — so callers like the eval harness can grade
-    grounding against exactly what the model was given.
+    ``retrieved_docs`` is the position-driven opening theory injected for this
+    turn, surfaced separately from the message list.
     """
 
     agent: object
@@ -45,7 +43,7 @@ class PreparedRun:
 
 @dataclass
 class AgentResponse:
-    """Structured result of a non-streaming agent run, for evaluation."""
+    """Structured result of a non-streaming agent run."""
 
     text: str
     tool_calls: list[str] = field(default_factory=list)  # model-chosen tools fired
@@ -59,19 +57,14 @@ class Client:
 
     @staticmethod
     def _make_agent_tools(fen: str) -> list:
-        """The agent's tool set for a position. Single source of truth, so the
-        prompt bundle hashes exactly the tools the agent is actually given."""
+        """Build the agent's tool set for a position."""
         return [
             make_stockfish_eval_tool(fen),
             make_lichess_masters_opening_explorer_tool(fen),
         ]
 
     def prompt_bundle(self) -> PromptBundle:
-        """The active prompt bundle (prompt text + live tool descriptions).
-
-        Tool descriptions are static, so any position yields the same bundle; the
-        eval harness uses ``.version`` to stamp runs with the prompt under test.
-        """
+        """Return the active prompt bundle (prompt text + tool descriptions)."""
         tools = [at.tool for at in self._make_agent_tools(get_fen_from_pgn(""))]
         return build_bundle(tools)
 
@@ -102,12 +95,8 @@ class Client:
         )
 
     async def run(self, chat_request: ChatRequest) -> AgentResponse:
-        """Run the agent to completion and return a structured result.
-
-        Unlike ``stream``, this collects the full message list so we can report
-        which tools the model chose and what context grounded its answer — the
-        inputs the eval metrics need.
-        """
+        """Run the agent to completion, returning the answer text, the tools it
+        called, and the contexts that grounded the answer."""
         prepared = self._prepare(chat_request)
         result = await prepared.agent.ainvoke(prepared.messages, config=prepared.config)  # type: ignore
         out_messages = result["messages"]
@@ -160,14 +149,11 @@ class Client:
     def _inject_position_context(
         messages: list[BaseMessage], pgn: str, fen: str, bundle: PromptBundle
     ) -> tuple[list[BaseMessage], str]:
-        """Place context for the current position right before the latest user
-        query, so it is adjacent to the question being answered: a structured
-        position profile first, then retrieved opening theory.
+        """Insert current-position context (a position profile, then any
+        retrieved opening theory) just before the latest user message.
 
-        Both are regenerated every turn and never persisted into history, so only
-        the current position's context is ever in scope. Returns the augmented
-        message list together with the retrieved opening docs (empty string if
-        none), so callers can grade grounding against what was injected.
+        Returns the augmented message list and the retrieved opening docs (empty
+        string if none).
         """
         if not messages:
             return messages, ""

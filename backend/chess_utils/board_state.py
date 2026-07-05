@@ -16,5 +16,5 @@ def get_fen_from_pgn(pgn: str) -> str:
 
 
 def get_position_key_from_fen(fen: str) -> str:
-    "Position-identity key: the FEN without its move counters (== board.epd())."
+    "Position-identity key: the FEN without its move counters."
     return " ".join(fen.split()[:4])
