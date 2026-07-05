@@ -59,6 +59,7 @@ def _center_pawn_config(board: chess.Board) -> dict[str, chess.Color]:
 
 def _development_counts(board: chess.Board) -> tuple[int, int]:
     """Return the count of developed minor pieces as (white, black)."""
+
     def _count(home_pieces: dict, color: chess.Color) -> int:
         return sum(
             1
@@ -73,6 +74,7 @@ def _development_counts(board: chess.Board) -> tuple[int, int]:
 
 def _castling_status(board: chess.Board) -> CastlingStatus:
     """Return the castling status of both sides."""
+
     def side_status(color: chess.Color) -> CastlingState:
         ks = board.has_kingside_castling_rights(color)
         qs = board.has_queenside_castling_rights(color)
