@@ -70,6 +70,8 @@ def epd_from_moves(moves_str):
 
 
 def parse_pgn_from_title(title):
+    """Return the space-separated move sequence encoded in a page title, or
+    None if the title is not a Chess Opening Theory page."""
     prefix = "Chess Opening Theory/"
     if not title or not title.startswith(prefix):
         return None
@@ -86,6 +88,7 @@ def parse_pgn_from_title(title):
 
 
 def clean_article(wikitext, title=None):
+    """Return the article's opening metadata and cleaned prose text."""
     parsed = mwparserfromhell.parse(wikitext)
     metadata = extract_opening_name(parsed)
     metadata["pgn"] = parse_pgn_from_title(title)

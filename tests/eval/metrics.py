@@ -118,6 +118,7 @@ async def judge_quality(
     agent_system_prompt: str,
     available_tools: str,
 ) -> QualityScore:
+    """Grade a candidate answer against the rubric, returning the judge's scores."""
     structured = judge.with_structured_output(QualityScore)
     prompt = _JUDGE_PROMPT.format(
         scope_note="IN SCOPE" if in_scope else "OUT OF SCOPE",

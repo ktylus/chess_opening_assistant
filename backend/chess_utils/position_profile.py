@@ -47,6 +47,7 @@ class PositionProfile:
 
 
 def _center_pawn_config(board: chess.Board) -> dict[str, chess.Color]:
+    """Return the center pawns keyed by square name (e4/d4/e5/d5)."""
     result: dict[str, chess.Color] = {}
     square_names = {chess.E4: "e4", chess.D4: "d4", chess.E5: "e5", chess.D5: "d5"}
     for sq, name in square_names.items():
@@ -57,6 +58,7 @@ def _center_pawn_config(board: chess.Board) -> dict[str, chess.Color]:
 
 
 def _development_counts(board: chess.Board) -> tuple[int, int]:
+    """Return the count of developed minor pieces as (white, black)."""
     def _count(home_pieces: dict, color: chess.Color) -> int:
         return sum(
             1
@@ -70,6 +72,7 @@ def _development_counts(board: chess.Board) -> tuple[int, int]:
 
 
 def _castling_status(board: chess.Board) -> CastlingStatus:
+    """Return the castling status of both sides."""
     def side_status(color: chess.Color) -> CastlingState:
         ks = board.has_kingside_castling_rights(color)
         qs = board.has_queenside_castling_rights(color)
@@ -101,6 +104,11 @@ def _castling_status(board: chess.Board) -> CastlingStatus:
 
 
 def build_profile(pgn: str) -> PositionProfile:
+    """Build a position profile from a PGN move sequence.
+
+    An empty PGN is the starting position. Raises ValueError if the PGN is
+    invalid.
+    """
     # An empty PGN is the starting position, not an error.
     if not pgn.strip():
         board = chess.Board()
@@ -119,6 +127,7 @@ def build_profile(pgn: str) -> PositionProfile:
 
 
 def profile_to_text(profile: PositionProfile) -> str:
+    """Render a position profile as human-readable text for the model."""
     lines = ["## Position Profile"]
 
     if profile.center_pawns:

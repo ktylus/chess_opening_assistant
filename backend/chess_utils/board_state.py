@@ -4,6 +4,11 @@ import chess.pgn
 
 
 def get_fen_from_pgn(pgn: str) -> str:
+    """Return the FEN of the position reached after the moves in the PGN.
+
+    An empty PGN yields the starting position. Raises ValueError if the PGN is
+    invalid.
+    """
     if not pgn.strip():
         return chess.Board().fen()
     game = chess.pgn.read_game(io.StringIO(pgn))

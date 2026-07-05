@@ -49,6 +49,7 @@ def get_category_members(category: str) -> list[str]:
 
 
 def get_page_lengths(titles: list[str]) -> dict[str, int]:
+    """Return a mapping of page title to its length in characters."""
     lengths = {}
     for i in range(0, len(titles), 10):
         batch = titles[i : i + 10]

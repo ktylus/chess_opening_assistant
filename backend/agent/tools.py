@@ -46,6 +46,7 @@ def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
 def _find_docs_for_position(
     fen: str, docs_path: Path = DEFAULT_DOCS_PATH
 ) -> list[OpeningDoc]:
+    """Return the opening docs whose position matches the given FEN."""
     key = get_position_key_from_fen(fen)
     with open(docs_path, encoding="utf-8") as f:
         doc_jsons = [line for line in f.read().split("\n") if line.strip()]
@@ -59,6 +60,7 @@ def make_stockfish_eval_tool(
     think_time: float = STOCKFISH_THINK_TIME,
     num_lines: int = STOCKFISH_LINES,
 ):
+    """Build a tool that evaluates the given position with Stockfish."""
     resolved_path = stockfish_path or os.environ.get("STOCKFISH_PATH", "stockfish")
 
     @tool
@@ -98,6 +100,7 @@ def make_stockfish_eval_tool(
 
 
 def _moves_to_san(board: chess.Board, moves: list[chess.Move]) -> list[str]:
+    """Convert a move sequence to SAN, stopping at the first illegal move."""
     result = []
     for move in moves:
         if move not in board.legal_moves:
@@ -108,6 +111,7 @@ def _moves_to_san(board: chess.Board, moves: list[chess.Move]) -> list[str]:
 
 
 def make_lichess_masters_opening_explorer_tool(fen: str):
+    """Build a tool that returns Lichess master-game statistics for the position."""
     token = os.environ.get("LICHESS_API_KEY")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 

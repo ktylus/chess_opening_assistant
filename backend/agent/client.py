@@ -127,6 +127,8 @@ class Client:
         return AgentResponse(text=text, tool_calls=tool_calls, contexts=contexts)
 
     async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
+        """Run the agent and yield the response as text chunks, interleaving a
+        status message whenever a tool is used."""
         prepared = self._prepare(chat_request)
         agent = prepared.agent
         messages = prepared.messages

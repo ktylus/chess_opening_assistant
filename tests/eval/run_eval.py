@@ -124,6 +124,7 @@ def make_quality_evaluator(
 
 
 def _git_sha() -> str:
+    """Return the short git SHA of HEAD, or "unknown" if it can't be read."""
     try:
         return subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"], text=True
