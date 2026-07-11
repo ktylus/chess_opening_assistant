@@ -1,4 +1,5 @@
-I'm learning - when asked about how to do something, don't go and write the code immediately. Instead, favor discussion over code generation. Favor modern approaches and good practices that scale with project growth.
+I'm learning - you can author code but let's work through possible approaches first. I'm willing to engage with decisions involving tradeoffs to practice.
+This is a portfolio project.
 
 This project is about creating an agent-powered LLM-based assistant which aids in learning chess openings. It's important that the system is limited to openings, probably max 6 moves deep.
 The idea is to ask questions about the position currently on the chessboard. The assistant should be able to answer questions about the nature of the position, highlighting key tactical and positional ideas, topical pawn breaks, etc.
