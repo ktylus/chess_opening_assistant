@@ -23,7 +23,7 @@ from backend.agent.tools import (
 from backend.chess_utils.board_state import get_fen_from_pgn
 from backend.chess_utils.position_profile import build_profile, profile_to_text
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.1-flash-lite"
 
 
 @dataclass

@@ -35,9 +35,7 @@ from tests.eval.metrics import (
 )
 from tests.eval.sync import DATASET_NAME, sync_dataset
 
-# A Claude judge against the Gemini agent under test, deliberately cross-provider
-# to limit self-preference bias. Lives beside the agent's MODEL it pairs against.
-JUDGE_MODEL = "claude-opus-4-8"
+JUDGE_MODEL = "gemini-3.1-flash-lite"
 
 
 def make_judge(model: str = JUDGE_MODEL) -> BaseChatModel:
