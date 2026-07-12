@@ -5,6 +5,7 @@ from backend.observability.context import (
     get_conversation_id,
     get_request_id,
     new_request_id,
+    reset_context,
     start_event,
 )
 from backend.observability.events import ChatEvent, Outcome
@@ -20,5 +21,6 @@ __all__ = [
     "get_conversation_id",
     "get_request_id",
     "new_request_id",
+    "reset_context",
     "start_event",
 ]

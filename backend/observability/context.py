@@ -58,3 +58,10 @@ def start_event() -> ChatEvent:
     event = ChatEvent()
     _chat_event.set(event)
     return event
+
+
+def reset_context() -> None:
+    """Unbind everything, leaving the context as if no request were in flight."""
+    _request_id.set(None)
+    _conversation_id.set(None)
+    _chat_event.set(None)
