@@ -28,22 +28,7 @@ LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
 LICHESS_TOP_MOVES = 5
 
 
-def retrieve_opening_docs(fen: str, docs_path: Path = DEFAULT_DOCS_PATH) -> str:
-    """Retrieve and format opening docs for the given board position, or return
-    an empty string when no documents match."""
-    docs = _find_docs_for_position(fen, docs_path)
-    if not docs:
-        return ""
-    formatted = [
-        DOC_FORMAT.format(
-            n=i + 1, name=doc["metadata"].get("name", ""), text=doc["text"]
-        )
-        for i, doc in enumerate(docs)
-    ]
-    return "\n\n".join(formatted)
-
-
-def _find_docs_for_position(
+def retrieve_opening_docs(
     fen: str, docs_path: Path = DEFAULT_DOCS_PATH
 ) -> list[OpeningDoc]:
     """Return the opening docs whose position matches the given FEN."""
@@ -52,6 +37,17 @@ def _find_docs_for_position(
         doc_jsons = [line for line in f.read().split("\n") if line.strip()]
     doc_jsons = [json.loads(json_str) for json_str in doc_jsons]
     return [doc for doc in doc_jsons if doc["metadata"]["epd"] == key]
+
+
+def format_opening_docs(docs: list[OpeningDoc]) -> str:
+    """Render opening docs for the prompt, or return an empty string when there
+    are none."""
+    return "\n\n".join(
+        DOC_FORMAT.format(
+            n=i + 1, name=doc["metadata"].get("name", ""), text=doc["text"]
+        )
+        for i, doc in enumerate(docs)
+    )
 
 
 def make_stockfish_eval_tool(

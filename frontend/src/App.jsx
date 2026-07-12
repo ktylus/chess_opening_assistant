@@ -8,6 +8,9 @@ export default function App() {
   const [viewIndex, setViewIndex] = useState(0)
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
+  // Ties the turns of one chat together in the backend logs. Only the frontend
+  // knows where a conversation starts, so it is minted here and reset on reset.
+  const [conversationId, setConversationId] = useState(() => crypto.randomUUID())
 
   const currentPgn = useMemo(() => {
     const chess = new Chess()
@@ -48,6 +51,7 @@ export default function App() {
         body: JSON.stringify({
           messages: nextMessages,
           pgn: currentPgn,
+          conversation_id: conversationId,
         }),
       })
 
@@ -74,6 +78,7 @@ export default function App() {
     setMoves([])
     setViewIndex(0)
     setMessages([])
+    setConversationId(crypto.randomUUID())
   }
 
   return (

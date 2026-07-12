@@ -1,3 +1,6 @@
+import asyncio
+import logging
+import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 
@@ -16,14 +19,24 @@ from langchain_core.messages import (
 from backend.agent.chat_models import ChatRequest, MessageRole
 from backend.agent.prompt_bundle import PromptBundle, build_bundle
 from backend.agent.tools import (
+    format_opening_docs,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
     retrieve_opening_docs,
 )
-from backend.chess_utils.board_state import get_fen_from_pgn
+from backend.chess_utils.board_state import get_fen_from_pgn, get_ply_from_fen
 from backend.chess_utils.position_profile import build_profile, profile_to_text
+from backend.observability import (
+    Outcome,
+    current_event,
+    get_conversation_id,
+    get_request_id,
+)
 
 MODEL = "gemini-3.1-flash-lite"
+ERROR_MESSAGE = "\n\n*Something went wrong while answering that. Please try again.*"
+
+logger = logging.getLogger("chess_opening_assistant.agent")
 
 
 @dataclass
@@ -81,11 +94,24 @@ class Client:
             else ""
         )
         system_message = SystemMessage(bundle.system_prompt + position_context)
-        conversation, retrieved_docs = self._inject_position_context(
-            self._to_langchain_messages(chat_request), chat_request.pgn, fen, bundle
+        docs = retrieve_opening_docs(fen)
+        retrieved_docs = format_opening_docs(docs)
+        conversation = self._inject_position_context(
+            self._to_langchain_messages(chat_request),
+            chat_request.pgn,
+            retrieved_docs,
+            bundle,
         )
         messages = {"messages": [system_message] + conversation}
-        config = {"metadata": {"prompt_version": bundle.version, "model": MODEL}}
+        config = {
+            "metadata": {
+                "prompt_version": bundle.version,
+                "model": MODEL,
+                "request_id": get_request_id(),
+                "conversation_id": get_conversation_id(),
+            }
+        }
+        self._record_request(chat_request, fen, docs)
         return PreparedRun(
             agent=agent,
             messages=messages,
@@ -93,6 +119,25 @@ class Client:
             status_messages=status_messages,
             retrieved_docs=retrieved_docs,
         )
+
+    @staticmethod
+    def _record_request(chat_request: ChatRequest, fen: str, docs: list) -> None:
+        """Note what the incoming request asked about on the current event."""
+        event = current_event()
+        event.turn = len(chat_request.messages)
+        event.question = next(
+            (
+                message.content
+                for message in reversed(chat_request.messages)
+                if message.role == MessageRole.USER
+            ),
+            None,
+        )
+        event.pgn = chat_request.pgn
+        event.fen = fen
+        event.ply = get_ply_from_fen(fen)
+        event.docs_hit = bool(docs)
+        event.docs_count = len(docs)
 
     async def run(self, chat_request: ChatRequest) -> AgentResponse:
         """Run the agent to completion, returning the answer text, the tools it
@@ -129,36 +174,57 @@ class Client:
     async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
         """Run the agent and yield the response as text chunks, interleaving a
         status message whenever a tool is used."""
-        prepared = self._prepare(chat_request)
-        agent = prepared.agent
-        messages = prepared.messages
-        config = prepared.config
-        status_messages = prepared.status_messages
-        async for chunk in agent.astream(  # type: ignore
-            messages, config=config, stream_mode="messages"
-        ):  # type: ignore
-            msg = chunk[0]  # type: ignore
-            if isinstance(msg, AIMessageChunk):
-                text = _message_text(msg.content)
-            elif isinstance(msg, ToolMessage):
-                text = status_messages.get(msg.name or "", "*Using tool...*") + "\n\n"
-            else:
-                continue
-            if text:
-                yield text
+        event = current_event()
+        started = time.perf_counter()
+        try:
+            prepared = self._prepare(chat_request)
+            agent = prepared.agent
+            messages = prepared.messages
+            config = prepared.config
+            status_messages = prepared.status_messages
+            async for chunk in agent.astream(  # type: ignore
+                messages, config=config, stream_mode="messages"
+            ):  # type: ignore
+                msg = chunk[0]  # type: ignore
+                if isinstance(msg, AIMessageChunk):
+                    text = _message_text(msg.content)
+                    if text and event.ttft_ms is None:
+                        event.ttft_ms = _elapsed_ms(started)
+                elif isinstance(msg, ToolMessage):
+                    event.tools_called.append(msg.name or "unknown")
+                    text = (
+                        status_messages.get(msg.name or "", "*Using tool...*") + "\n\n"
+                    )
+                else:
+                    continue
+                if text:
+                    event.chars_streamed += len(text)
+                    yield text
+            event.outcome = Outcome.COMPLETED
+        except asyncio.CancelledError:
+            # The client hung up mid-answer; record it, then let the cancellation
+            # continue to propagate.
+            event.outcome = Outcome.CLIENT_DISCONNECT
+            raise
+        except Exception:
+            # The response has already begun, so the status code is committed and
+            # the failure cannot surface as an HTTP error. Tell the user in the
+            # stream itself rather than cutting them off mid-sentence.
+            event.outcome = Outcome.ERROR
+            logger.exception("chat_failed")
+            yield ERROR_MESSAGE
+        finally:
+            event.total_ms = _elapsed_ms(started)
+            event.emit()
 
     @staticmethod
     def _inject_position_context(
-        messages: list[BaseMessage], pgn: str, fen: str, bundle: PromptBundle
-    ) -> tuple[list[BaseMessage], str]:
+        messages: list[BaseMessage], pgn: str, docs: str, bundle: PromptBundle
+    ) -> list[BaseMessage]:
         """Insert current-position context (a position profile, then any
-        retrieved opening theory) just before the latest user message.
-
-        Returns the augmented message list and the retrieved opening docs (empty
-        string if none).
-        """
+        retrieved opening theory) just before the latest user message."""
         if not messages:
-            return messages, ""
+            return messages
 
         context = [
             HumanMessage(
@@ -168,13 +234,12 @@ class Client:
             )
         ]
 
-        docs = retrieve_opening_docs(fen)
         if docs:
             context.append(HumanMessage(bundle.docs_preamble.format(docs=docs)))
         else:
             context.append(HumanMessage(bundle.no_docs_fallback))
 
-        return messages[:-1] + context + [messages[-1]], docs
+        return messages[:-1] + context + [messages[-1]]
 
     @staticmethod
     def _to_langchain_messages(chat_request: ChatRequest) -> list[BaseMessage]:
@@ -185,6 +250,10 @@ class Client:
             elif message.role == MessageRole.ASSISTANT:
                 messages.append(AIMessage(message.content))
         return messages
+
+
+def _elapsed_ms(since: float) -> int:
+    return round((time.perf_counter() - since) * 1000)
 
 
 def _message_text(content: str | list) -> str:

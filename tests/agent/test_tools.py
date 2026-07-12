@@ -4,9 +4,9 @@ import pytest
 
 from backend.agent.tools import (
     STOCKFISH_LINES,
-    _find_docs_for_position,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
+    retrieve_opening_docs,
 )
 from backend.chess_utils.board_state import get_position_key_from_fen
 
@@ -37,7 +37,7 @@ STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     ],
 )
 def test_retrieve_docs_by_fen(fen, expected_names):
-    docs = _find_docs_for_position(fen, TEST_DATA_PATH)
+    docs = retrieve_opening_docs(fen, TEST_DATA_PATH)
     assert [doc["metadata"]["name"] for doc in docs] == expected_names
     assert all(doc["metadata"]["epd"] == get_position_key_from_fen(fen) for doc in docs)
 

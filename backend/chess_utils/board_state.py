@@ -23,3 +23,8 @@ def get_fen_from_pgn(pgn: str) -> str:
 def get_position_key_from_fen(fen: str) -> str:
     "Position-identity key: the FEN without its move counters."
     return " ".join(fen.split()[:4])
+
+
+def get_ply_from_fen(fen: str) -> int:
+    """Return the number of half-moves played to reach the position."""
+    return chess.Board(fen).ply()
