@@ -1,4 +1,4 @@
-"""Model-facing prompt text: every author-written string the model reads.
+"""Model-facing prompt text: the scaffolding the conversation is assembled from.
 
 User-facing copy (e.g. tool status messages) deliberately does NOT live here,
 since it never reaches the model.

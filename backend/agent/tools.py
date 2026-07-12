@@ -31,6 +31,39 @@ LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
 LICHESS_TOP_MOVES = 5
 
 
+ENGINE_LINE = "Line {n} ({score}): {moves}"
+ENGINE_SCORE_UNAVAILABLE = "N/A"
+ENGINE_MATE_SCORE = "M{moves}"
+ENGINE_PAWN_SCORE = "{pawns:+.2f}"
+
+EXPLORER_HEADER = (
+    "Total master games in this position: {total}\n\nMost common continuations:"
+)
+EXPLORER_MOVE = (
+    "{n}. {san} — {prevalence:.0f}% of games"
+    " | White {white:.0f}% / Draw {draw:.0f}% / Black {black:.0f}%"
+)
+EXPLORER_NO_GAMES = "No master games found for this position."
+
+
+def model_facing_text() -> dict[str, str]:
+    """Return every author-written string this module puts in front of the model.
+
+    Tool *descriptions* are not included: they are read off the live tool objects
+    and snapshotted separately by ``PromptBundle``.
+    """
+    return {
+        "engine_line": ENGINE_LINE,
+        "engine_score_unavailable": ENGINE_SCORE_UNAVAILABLE,
+        "engine_mate_score": ENGINE_MATE_SCORE,
+        "engine_pawn_score": ENGINE_PAWN_SCORE,
+        "explorer_header": EXPLORER_HEADER,
+        "explorer_move": EXPLORER_MOVE,
+        "explorer_no_games": EXPLORER_NO_GAMES,
+        "doc_format": DOC_FORMAT,
+    }
+
+
 def resolve_stockfish_path(stockfish_path: str | None = None) -> str:
     """Return the path to the Stockfish binary the tools will run."""
     return stockfish_path or os.environ.get("STOCKFISH_PATH", "stockfish")
@@ -133,18 +166,18 @@ def make_stockfish_eval_tool(
         for i, info in enumerate(results):
             score = info.get("score")
             if score is None:
-                score_str = "N/A"
+                score_str = ENGINE_SCORE_UNAVAILABLE
             else:
                 relative = score.white()
                 if relative.is_mate():
-                    score_str = f"M{relative.mate()}"
+                    score_str = ENGINE_MATE_SCORE.format(moves=relative.mate())
                 else:
                     cp = relative.score(mate_score=10000)
-                    score_str = f"{cp / 100:+.2f}"
+                    score_str = ENGINE_PAWN_SCORE.format(pawns=cp / 100)
 
             pv = info.get("pv", [])
             moves = " ".join(_moves_to_san(board.copy(), pv))
-            lines.append(f"Line {i + 1} ({score_str}): {moves}")
+            lines.append(ENGINE_LINE.format(n=i + 1, score=score_str, moves=moves))
 
         return "\n".join(lines)
 
@@ -186,10 +219,9 @@ def make_lichess_masters_opening_explorer_tool(fen: str):
 
         position_total = data["white"] + data["draws"] + data["black"]
         if position_total == 0:
-            return "No master games found for this position."
+            return EXPLORER_NO_GAMES
 
-        lines = [f"Total master games in this position: {position_total}\n"]
-        lines.append("Most common continuations:")
+        lines = [EXPLORER_HEADER.format(total=position_total)]
 
         board = chess.Board(fen)
         for i, move in enumerate(data["moves"], start=1):
@@ -197,13 +229,15 @@ def make_lichess_masters_opening_explorer_tool(fen: str):
             if move_total == 0:
                 continue
             san = board.san(chess.Move.from_uci(move["uci"]))
-            prevalence = move_total / position_total * 100
-            white_pct = move["white"] / move_total * 100
-            draw_pct = move["draws"] / move_total * 100
-            black_pct = move["black"] / move_total * 100
             lines.append(
-                f"{i}. {san} — {prevalence:.0f}% of games"
-                f" | White {white_pct:.0f}% / Draw {draw_pct:.0f}% / Black {black_pct:.0f}%"
+                EXPLORER_MOVE.format(
+                    n=i,
+                    san=san,
+                    prevalence=move_total / position_total * 100,
+                    white=move["white"] / move_total * 100,
+                    draw=move["draws"] / move_total * 100,
+                    black=move["black"] / move_total * 100,
+                )
             )
 
         return "\n".join(lines)

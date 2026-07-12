@@ -1,9 +1,5 @@
 """Collects the model-facing prompt text and tool descriptions into a single
 immutable, content-hashed ``PromptBundle``.
-
-The prompt text comes from ``prompts.py`` and the tool descriptions are read off
-the live tool objects. The content hash is the ``version`` id, so it can't drift
-from what actually runs.
 """
 
 import hashlib
@@ -11,7 +7,8 @@ import json
 
 from langchain_core.tools import BaseTool
 
-from backend.agent import prompts
+from backend.agent import prompts, tools
+from backend.chess_utils import position_profile
 
 
 class PromptBundle:
@@ -24,6 +21,8 @@ class PromptBundle:
         "docs_preamble",
         "no_docs_fallback",
         "doc_format",
+        "profile_text",
+        "tool_output_text",
         "tool_descriptions",
         "version",
     )
@@ -35,6 +34,8 @@ class PromptBundle:
         self.docs_preamble = prompts.DOCS_PREAMBLE
         self.no_docs_fallback = prompts.NO_DOCS_FALLBACK
         self.doc_format = prompts.DOC_FORMAT
+        self.profile_text = position_profile.model_facing_text()
+        self.tool_output_text = tools.model_facing_text()
         self.tool_descriptions = dict(tool_descriptions)
         self.version = _version_hash(self._payload())
 
@@ -46,6 +47,8 @@ class PromptBundle:
             "docs_preamble": self.docs_preamble,
             "no_docs_fallback": self.no_docs_fallback,
             "doc_format": self.doc_format,
+            "profile_text": self.profile_text,
+            "tool_output_text": self.tool_output_text,
             "tool_descriptions": self.tool_descriptions,
         }
 

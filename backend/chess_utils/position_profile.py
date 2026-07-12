@@ -1,4 +1,6 @@
-"""Extracts structured opening features from a position."""
+"""Extracts structured opening features from a position, and renders them for
+the model.
+"""
 
 import io
 from dataclasses import dataclass
@@ -6,6 +8,15 @@ from enum import Enum
 
 import chess
 import chess.pgn
+
+PROFILE_TEMPLATE = """## Position Profile
+Center pawns: {center}
+Development: White has {white_developed}/4 minor pieces developed, Black has {black_developed}/4.
+Castling — White: {white_castling}; Black: {black_castling}"""
+
+PROFILE_CENTER_PAWN = "{square} ({color})"
+PROFILE_NO_CENTER_PAWNS = "no pawns in the center"
+COLOR_NAMES = {chess.WHITE: "white", chess.BLACK: "black"}
 
 # Maps each minor piece home square to the piece type that belongs there
 _WHITE_HOME_PIECES = {
@@ -130,24 +141,33 @@ def build_profile(pgn: str) -> PositionProfile:
 
 def profile_to_text(profile: PositionProfile) -> str:
     """Render a position profile as human-readable text for the model."""
-    lines = ["## Position Profile"]
-
     if profile.center_pawns:
-        center_desc = ", ".join(
-            f"{sq} ({'white' if color == chess.WHITE else 'black'})"
-            for sq, color in sorted(profile.center_pawns.items())
+        center = ", ".join(
+            PROFILE_CENTER_PAWN.format(square=square, color=COLOR_NAMES[color])
+            for square, color in sorted(profile.center_pawns.items())
         )
     else:
-        center_desc = "no pawns in the center"
-    lines.append(f"Center pawns: {center_desc}")
+        center = PROFILE_NO_CENTER_PAWNS
 
-    lines.append(
-        f"Development: White has {profile.white_developed}/4 minor pieces developed, "
-        f"Black has {profile.black_developed}/4."
+    return PROFILE_TEMPLATE.format(
+        center=center,
+        white_developed=profile.white_developed,
+        black_developed=profile.black_developed,
+        white_castling=profile.castling.white.value,
+        black_castling=profile.castling.black.value,
     )
 
-    lines.append(
-        f"Castling — White: {profile.castling.white.value}; Black: {profile.castling.black.value}"
-    )
 
-    return "\n".join(lines)
+def model_facing_text() -> dict[str, str]:
+    """Return every author-written string this module puts in front of the model.
+
+    The castling descriptions are included because the enum's *values*, not its
+    member names, are what the model reads.
+    """
+    return {
+        "profile_template": PROFILE_TEMPLATE,
+        "profile_center_pawn": PROFILE_CENTER_PAWN,
+        "profile_no_center_pawns": PROFILE_NO_CENTER_PAWNS,
+        **{f"color_{name}": name for name in COLOR_NAMES.values()},
+        **{f"castling_{state.name.lower()}": state.value for state in CastlingState},
+    }
