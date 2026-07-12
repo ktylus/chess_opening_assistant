@@ -32,8 +32,10 @@ from backend.observability import (
     get_conversation_id,
     get_request_id,
 )
+from backend.observability.provenance import git_sha
 
 MODEL = "gemini-3.1-flash-lite"
+MODEL_PROVIDER = "google_genai"
 ERROR_MESSAGE = "\n\n*Something went wrong while answering that. Please try again.*"
 
 logger = logging.getLogger("chess_opening_assistant.agent")
@@ -61,12 +63,13 @@ class AgentResponse:
     text: str
     tool_calls: list[str] = field(default_factory=list)  # model-chosen tools fired
     contexts: list[str] = field(default_factory=list)  # grounding the answer used
+    model_version: str | None = None  # the weights the provider says it served
 
 
 class Client:
     def __init__(self):
         load_dotenv()
-        self.model = init_chat_model(model=MODEL, model_provider="google_genai")
+        self.model = init_chat_model(model=MODEL, model_provider=MODEL_PROVIDER)
 
     @staticmethod
     def _make_agent_tools(fen: str) -> list:
@@ -111,7 +114,7 @@ class Client:
                 "conversation_id": get_conversation_id(),
             }
         }
-        self._record_request(chat_request, fen, docs)
+        self._record_request(chat_request, fen, docs, bundle)
         return PreparedRun(
             agent=agent,
             messages=messages,
@@ -121,9 +124,15 @@ class Client:
         )
 
     @staticmethod
-    def _record_request(chat_request: ChatRequest, fen: str, docs: list) -> None:
-        """Note what the incoming request asked about on the current event."""
+    def _record_request(
+        chat_request: ChatRequest, fen: str, docs: list, bundle: PromptBundle
+    ) -> None:
+        """Note what the incoming request asked about, and what is answering it,
+        on the current event."""
         event = current_event()
+        event.prompt_version = bundle.version
+        event.model = MODEL
+        event.git_sha = git_sha()
         event.turn = len(chat_request.messages)
         event.question = next(
             (
@@ -169,7 +178,21 @@ class Client:
             ),
             "",
         )
-        return AgentResponse(text=text, tool_calls=tool_calls, contexts=contexts)
+        model_version = next(
+            (
+                version
+                for msg in reversed(out_messages)
+                if (version := _model_version(msg))
+            ),
+            None,
+        )
+        current_event().model_version = model_version
+        return AgentResponse(
+            text=text,
+            tool_calls=tool_calls,
+            contexts=contexts,
+            model_version=model_version,
+        )
 
     async def stream(self, chat_request: ChatRequest) -> AsyncGenerator[str]:
         """Run the agent and yield the response as text chunks, interleaving a
@@ -190,6 +213,8 @@ class Client:
                     text = _message_text(msg.content)
                     if text and event.ttft_ms is None:
                         event.ttft_ms = _elapsed_ms(started)
+                    if event.model_version is None:
+                        event.model_version = _model_version(msg)
                 elif isinstance(msg, ToolMessage):
                     event.tools_called.append(msg.name or "unknown")
                     text = (
@@ -254,6 +279,17 @@ class Client:
 
 def _elapsed_ms(since: float) -> int:
     return round((time.perf_counter() - since) * 1000)
+
+
+def _model_version(message: BaseMessage) -> str | None:
+    """Return the model the provider reports having served, if it says.
+
+    ``MODEL`` is an alias the provider re-points at new weights over time, so it
+    names a policy, not the thing that answered. This is the closest the API
+    comes to naming the latter, and it is absent on most chunks of a stream.
+    """
+    metadata = getattr(message, "response_metadata", None) or {}
+    return metadata.get("model_name") or metadata.get("model_version")
 
 
 def _message_text(content: str | list) -> str:

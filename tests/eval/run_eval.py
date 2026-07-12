@@ -12,14 +12,19 @@ the same upsert on its own, for pushing the dataset without paying for a full
 eval.
 
 For each example LangSmith runs the agent, then scores tool usage (deterministic)
-and answer quality (LLM judge). Results land in LangSmith as an experiment tied
-to the dataset version, stamped with the prompt and judge versions under test, so
-every run is queryable by exactly what produced it: dataset rows, prompt
-elements, judge, and scores. Requires ``LANGSMITH_TRACING=true`` and an API key.
+and answer quality (LLM judge). Results land in LangSmith as an experiment
+stamped with everything that shaped the answers: the prompt, dataset and judge
+hashes, the commit, and the engine and retrieval config behind the tools. The
+same ``prompt_version`` and ``git_sha`` are stamped on the wide event each live
+request logs, so an experiment and a complaint about production can be joined.
+
+Two inputs resist being pinned, and the metadata says so rather than implying
+otherwise: Stockfish is searched on wall-clock time, and the Lichess masters
+database is live. Identical code can therefore score differently on different
+days. Requires ``LANGSMITH_TRACING=true`` and an API key.
 """
 
 import asyncio
-import subprocess
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
@@ -28,6 +33,9 @@ from langsmith import aevaluate
 
 from backend.agent.chat_models import ChatRequest, Message, MessageRole
 from backend.agent.client import MODEL, Client
+from backend.agent.tools import tool_config
+from backend.observability.provenance import git_sha, is_dirty
+from tests.eval.dataset import dataset_version
 from tests.eval.metrics import (
     judge_quality,
     judge_version,
@@ -35,11 +43,18 @@ from tests.eval.metrics import (
 )
 from tests.eval.sync import DATASET_NAME, sync_dataset
 
+# The judge shares the agent's model to keep dev runs cheap. That costs the
+# cross-provider guarantee: a model shown its own output grades it generously, so
+# quality scores read optimistically. The bias is recorded per run as
+# ``judge_is_agent_model`` rather than left for a reader to infer from two ids
+# that happen to match, and it is why absolute scores here mean less than the
+# movement between runs.
 JUDGE_MODEL = "gemini-3.1-flash-lite"
+JUDGE_PROVIDER = "google_genai"
 
 
 def make_judge(model: str = JUDGE_MODEL) -> BaseChatModel:
-    return init_chat_model(model=model, model_provider="anthropic")
+    return init_chat_model(model=model, model_provider=JUDGE_PROVIDER)
 
 
 def make_target(client: Client):
@@ -57,6 +72,10 @@ def make_target(client: Client):
             "answer": response.text,
             "tool_calls": response.tool_calls,
             "contexts": response.contexts,
+            # Per-example, not run-level: the alias in the run metadata names a
+            # policy, and the provider is free to serve different weights under
+            # it -- in principle between one example and the next.
+            "model_version": response.model_version,
         }
 
     return run_agent
@@ -121,18 +140,20 @@ def make_quality_evaluator(
     return quality_evaluator
 
 
-def _git_sha() -> str:
-    """Return the short git SHA of HEAD, or "unknown" if it can't be read."""
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], text=True
-        ).strip()
-    except Exception:
-        return "unknown"
+def _temperature(model: BaseChatModel) -> float | None:
+    """Return the temperature the model is configured with, or ``None`` if it
+    was never set and the provider's own default therefore applied."""
+    return getattr(model, "temperature", None)
 
 
 async def main() -> None:
     load_dotenv()
+
+    if is_dirty():
+        print(
+            f"WARNING: uncommitted changes. This run is stamped {git_sha()}; its "
+            "prompt_version cannot be resolved back to any commit."
+        )
 
     # Keep the LangSmith dataset in lockstep with the authored source before the
     # run. The upsert always fires (it's idempotent), so LangSmith can never
@@ -151,17 +172,25 @@ async def main() -> None:
     available_tools = _format_tools(bundle.tool_descriptions)
 
     # Run-level provenance: the join keys that let any result be traced back to
-    # the exact configuration that produced it (prompt elements, judge, model).
+    # the configuration that produced it. The version fields are hashes, and a
+    # hash is only resolvable through the repository, so git_sha is what makes
+    # the rest of this mean anything -- hence it names a dirty tree as dirty.
+    # tool_config covers what no commit can pin: an engine binary resolved from
+    # the environment and a live external opening database.
+    #
+    # A null temperature is not a missing value: it records that we set none and
+    # ran on the provider's default, which is itself free to move between runs.
     metadata = {
         "prompt_version": bundle.version,
         "model": MODEL,
-        # The agent isn't pinned; it runs on the provider default (what we ship).
-        # Recorded explicitly so a run's sampling config is part of its provenance.
-        "agent_temperature": "provider default",
+        "agent_temperature": _temperature(client.model),
         "judge_model": JUDGE_MODEL,
         "judge_version": judge_version(JUDGE_MODEL),
-        "judge_temperature": "provider default",
-        "git_sha": _git_sha(),
+        "judge_temperature": _temperature(judge),
+        "judge_is_agent_model": JUDGE_MODEL == MODEL,
+        "dataset_version": dataset_version(),
+        "git_sha": git_sha(),
+        **tool_config(),
     }
 
     results = await aevaluate(

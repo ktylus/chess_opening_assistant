@@ -15,6 +15,7 @@ parse straight into typed records in memory. There is no derived on-disk
 artifact — the loaded ``list[EvalRecord]`` is what gets passed around.
 """
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,3 +48,13 @@ class EvalRecord:
 def load_records(path: Path = DATASET_PATH) -> list[EvalRecord]:
     records = json.loads(path.read_text(encoding="utf-8"))
     return [EvalRecord.from_dict(record) for record in records]
+
+
+def dataset_version(path: Path = DATASET_PATH) -> str:
+    """Content hash of the authored golden set.
+
+    Editing a question or a label moves the scores, so the set that graded a run
+    is recorded with it. Mirrors ``PromptBundle.version``.
+    """
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return digest[:12]

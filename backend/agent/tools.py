@@ -1,3 +1,5 @@
+import functools
+import hashlib
 import json
 import os
 from dataclasses import dataclass
@@ -13,6 +15,7 @@ from langchain_core.tools import BaseTool
 from backend.agent.doc_models import OpeningDoc
 from backend.agent.prompts import DOC_FORMAT
 from backend.chess_utils.board_state import get_position_key_from_fen
+from backend.observability.provenance import UNKNOWN
 
 
 @dataclass
@@ -26,6 +29,62 @@ STOCKFISH_THINK_TIME = 2.0
 STOCKFISH_LINES = 2
 LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
 LICHESS_TOP_MOVES = 5
+
+
+def resolve_stockfish_path(stockfish_path: str | None = None) -> str:
+    """Return the path to the Stockfish binary the tools will run."""
+    return stockfish_path or os.environ.get("STOCKFISH_PATH", "stockfish")
+
+
+@functools.cache
+def stockfish_version(stockfish_path: str | None = None) -> str:
+    """Return the name the Stockfish binary reports for itself, e.g.
+    ``"Stockfish 17"``, or ``"unknown"`` if it cannot be run.
+
+    The engine is resolved from the environment rather than pinned in the
+    repository, so no commit identifies it, and different builds evaluate the
+    same opening position differently.
+    """
+    try:
+        with chess.engine.SimpleEngine.popen_uci(
+            resolve_stockfish_path(stockfish_path)
+        ) as engine:
+            return engine.id.get("name", UNKNOWN)
+    except Exception:
+        return UNKNOWN
+
+
+@functools.cache
+def docs_version(docs_path: Path = DEFAULT_DOCS_PATH) -> str:
+    """Content hash of the opening-docs corpus, or ``"unknown"`` if unreadable.
+
+    The corpus is a generated artifact and the sole source of retrieved theory,
+    so it is versioned in its own right rather than by the commit that happens
+    to contain it.
+    """
+    try:
+        digest = hashlib.sha256(docs_path.read_bytes()).hexdigest()
+    except OSError:
+        return UNKNOWN
+    return digest[:12]
+
+
+def tool_config() -> dict:
+    """Return the tool settings and versions that shape what the model reads.
+
+    Recorded alongside a run because these are model inputs that no commit
+    pins: ``stockfish_think_time`` is wall-clock, so the engine's answer varies
+    between runs of identical code, and the Lichess masters database is live and
+    changes underneath the assistant over time.
+    """
+    return {
+        "stockfish_version": stockfish_version(),
+        "stockfish_think_time": STOCKFISH_THINK_TIME,
+        "stockfish_lines": STOCKFISH_LINES,
+        "lichess_masters_url": LICHESS_MASTERS_URL,
+        "lichess_top_moves": LICHESS_TOP_MOVES,
+        "docs_version": docs_version(),
+    }
 
 
 def retrieve_opening_docs(
@@ -57,7 +116,7 @@ def make_stockfish_eval_tool(
     num_lines: int = STOCKFISH_LINES,
 ):
     """Build a tool that evaluates the given position with Stockfish."""
-    resolved_path = stockfish_path or os.environ.get("STOCKFISH_PATH", "stockfish")
+    resolved_path = resolve_stockfish_path(stockfish_path)
 
     @tool
     def evaluate_position_with_stockfish() -> str:

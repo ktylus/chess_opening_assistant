@@ -4,8 +4,9 @@ import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from backend.agent.chat_models import ChatRequest, Message, MessageRole
-from backend.agent.client import ERROR_MESSAGE, Client, PreparedRun
-from backend.observability import Outcome, start_event
+from backend.agent.client import ERROR_MESSAGE, MODEL, Client, PreparedRun
+from backend.agent.prompt_bundle import build_bundle
+from backend.observability import Outcome, git_sha, start_event
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 RUY_LOPEZ_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5"
@@ -116,7 +117,9 @@ def test_record_request_captures_question_position_and_retrieval():
         pgn=RUY_LOPEZ_PGN,
     )
 
-    Client._record_request(chat_request, STARTING_FEN, docs=[{"text": "..."}])
+    Client._record_request(
+        chat_request, STARTING_FEN, docs=[{"text": "..."}], bundle=build_bundle([])
+    )
 
     assert event.turn == 3
     assert event.question == "And the pawn breaks?"  # the latest one, not the first
@@ -130,8 +133,25 @@ def test_record_request_captures_question_position_and_retrieval():
 def test_record_request_marks_a_retrieval_miss():
     event = start_event()
 
-    Client._record_request(ChatRequest(messages=[]), STARTING_FEN, docs=[])
+    Client._record_request(
+        ChatRequest(messages=[]), STARTING_FEN, docs=[], bundle=build_bundle([])
+    )
 
     assert event.docs_hit is False
     assert event.docs_count == 0
     assert event.question is None
+
+
+def test_record_request_stamps_what_is_answering():
+    """The event must name the configuration that served the answer, so a
+    complaint about a live response can be joined to the eval that scored it."""
+    event = start_event()
+    bundle = build_bundle([])
+
+    Client._record_request(
+        ChatRequest(messages=[]), STARTING_FEN, docs=[], bundle=bundle
+    )
+
+    assert event.prompt_version == bundle.version
+    assert event.model == MODEL
+    assert event.git_sha == git_sha()

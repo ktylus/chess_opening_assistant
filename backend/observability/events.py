@@ -19,8 +19,18 @@ class ChatEvent:
 
     Stages of a request record what they know here; the finished record is
     written as a single log line by :meth:`emit`.
+
+    The provenance fields carry the same keys the eval experiments are stamped
+    with, so a complaint about a live answer and the experiment that scored the
+    same configuration can be joined on ``prompt_version`` and ``git_sha``.
     """
 
+    # What produced the answer:
+    prompt_version: str | None = None
+    model: str | None = None
+    model_version: str | None = None  # what the provider says it served
+    git_sha: str | None = None
+    # What was asked:
     turn: int | None = None
     question: str | None = None
     pgn: str | None = None
