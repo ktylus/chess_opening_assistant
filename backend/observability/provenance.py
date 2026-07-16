@@ -8,18 +8,27 @@ dirty rather than quietly named by a commit whose files are not the ones that
 ran.
 """
 
+import os
 import subprocess
 
 UNKNOWN = "unknown"
 DIRTY_SUFFIX = "-dirty"
+ENV_VAR = "GIT_SHA"
 
 
 def git_sha() -> str:
-    """Return the short SHA of HEAD, or ``"unknown"`` if git cannot be read.
+    """Return the short SHA of HEAD, or ``"unknown"`` if it cannot be resolved.
 
     A tree carrying uncommitted changes yields ``"<sha>-dirty"``: the commit no
     longer identifies the code that ran, and saying so is the point.
+
+    In an image the repository is absent, so the sha is instead read from the
+    ``GIT_SHA`` environment variable baked in at build time; the subprocess path
+    is the fallback for a working tree.
     """
+    baked = os.environ.get(ENV_VAR)
+    if baked:
+        return baked
     try:
         sha = _git("rev-parse", "--short", "HEAD")
         dirty = bool(_git("status", "--porcelain"))

@@ -20,6 +20,12 @@ COPY data ./data
 # The engine binary is on PATH inside the image, so override any host path.
 ENV STOCKFISH_PATH=/usr/games/stockfish
 
+# The repository is not in the image, so the commit the code was built from is
+# passed in at build time and read back by the observability layer at runtime.
+# Declared late to keep it out of the cached dependency layers above.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
+
 EXPOSE 8000
 
 # --host 0.0.0.0 makes the server reachable from outside the container.

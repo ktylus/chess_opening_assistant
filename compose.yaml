@@ -5,6 +5,10 @@ services:
       # live there); the Dockerfile itself sits in backend/.
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        # Computed on the host (see scripts/compose-up.sh) and baked in, since
+        # the container has no repository to read the commit from.
+        GIT_SHA: ${GIT_SHA:-unknown}
     ports:
       - "8000:8000"
     env_file:
