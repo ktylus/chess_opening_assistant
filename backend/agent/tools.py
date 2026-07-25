@@ -14,7 +14,7 @@ from langchain_core.tools import BaseTool
 
 from backend.agent.doc_models import OpeningDoc
 from backend.agent.prompts import DOC_FORMAT
-from backend.chess_utils.board_state import get_position_key_from_fen
+from backend.chess_utils.board_state import get_position_lineage
 from backend.observability.provenance import UNKNOWN
 
 
@@ -24,7 +24,27 @@ class AgentTool:
     status_message: str
 
 
+@dataclass(frozen=True)
+class Retrieval:
+    """Opening docs retrieved for a position, and where they came from.
+
+    ``plies_back`` is 0 when the docs describe the position on the board, and
+    otherwise how many half-moves earlier the position they describe is;
+    ``moves_since`` are the SAN moves played from there to the board position.
+    """
+
+    docs: list[OpeningDoc]
+    plies_back: int
+    moves_since: tuple[str, ...]
+
+    @property
+    def is_exact(self) -> bool:
+        """Whether the docs describe the position on the board."""
+        return self.plies_back == 0
+
+
 DEFAULT_DOCS_PATH = Path("data/wikibooks_openings/cleaned_openings.jsonl")
+MAX_RETRIEVAL_PLIES_BACK = 4
 STOCKFISH_THINK_TIME = 2.0
 STOCKFISH_LINES = 2
 LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
@@ -117,18 +137,39 @@ def tool_config() -> dict:
         "lichess_masters_url": LICHESS_MASTERS_URL,
         "lichess_top_moves": LICHESS_TOP_MOVES,
         "docs_version": docs_version(),
+        "max_retrieval_plies_back": MAX_RETRIEVAL_PLIES_BACK,
     }
 
 
-def retrieve_opening_docs(
-    fen: str, docs_path: Path = DEFAULT_DOCS_PATH
-) -> list[OpeningDoc]:
-    """Return the opening docs whose position matches the given FEN."""
-    key = get_position_key_from_fen(fen)
+def _load_docs(docs_path: Path) -> list[OpeningDoc]:
     with open(docs_path, encoding="utf-8") as f:
         doc_jsons = [line for line in f.read().split("\n") if line.strip()]
-    doc_jsons = [json.loads(json_str) for json_str in doc_jsons]
-    return [doc for doc in doc_jsons if doc["metadata"]["epd"] == key]
+    return [json.loads(json_str) for json_str in doc_jsons]
+
+
+def retrieve_opening_docs(
+    pgn: str,
+    docs_path: Path = DEFAULT_DOCS_PATH,
+    max_plies_back: int = MAX_RETRIEVAL_PLIES_BACK,
+) -> Retrieval:
+    """Return the opening docs for the position the PGN reaches.
+
+    When that position has no docs, earlier positions in the same game are tried
+    in turn, up to ``max_plies_back`` half-moves back, and the docs of the first
+    one that has any are returned. The result records how far back they came
+    from, so callers can tell the model the theory is not about the position on
+    the board.
+    """
+    docs = _load_docs(docs_path)
+    for position in get_position_lineage(pgn, max_plies_back):
+        matches = [doc for doc in docs if doc["metadata"]["epd"] == position.key]
+        if matches:
+            return Retrieval(
+                docs=matches,
+                plies_back=position.plies_back,
+                moves_since=position.moves_since,
+            )
+    return Retrieval(docs=[], plies_back=0, moves_since=())
 
 
 def format_opening_docs(docs: list[OpeningDoc]) -> str:

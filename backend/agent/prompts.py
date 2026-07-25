@@ -48,6 +48,19 @@ DOCS_PREAMBLE = (
     "Use it where helpful when answering the next question."
 )
 
+ANCESTOR_DOCS_PREAMBLE = (
+    "No opening theory was retrieved for the position currently on the board.\n\n"
+    "The theory below does NOT describe the position on the board. It describes "
+    "an EARLIER position in the same game, reached {plies_back} half-move(s) "
+    "ago, before {moves_since} was played:\n\n"
+    "{docs}\n\n"
+    "Treat it as general background on the variation rather than as analysis of "
+    "the position on the board. Only carry a claim over if it still holds after "
+    "the moves played since, and say plainly when you are doing so. For anything "
+    "specific to the position on the board, rely on your own knowledge and say "
+    "so."
+)
+
 NO_DOCS_FALLBACK = (
     "No opening theory was retrieved for the position currently on the "
     "board. Answer from your own knowledge and say so if the position is "

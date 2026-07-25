@@ -19,6 +19,7 @@ from langchain_core.messages import (
 from backend.agent.chat_models import ChatRequest, MessageRole
 from backend.agent.prompt_bundle import PromptBundle, build_bundle
 from backend.agent.tools import (
+    Retrieval,
     format_opening_docs,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
@@ -97,12 +98,13 @@ class Client:
             else ""
         )
         system_message = SystemMessage(bundle.system_prompt + position_context)
-        docs = retrieve_opening_docs(fen)
-        retrieved_docs = format_opening_docs(docs)
+        retrieval = retrieve_opening_docs(chat_request.pgn)
+        formatted_retrieved_docs = format_opening_docs(retrieval.docs)
         conversation = self._inject_position_context(
             self._to_langchain_messages(chat_request),
             chat_request.pgn,
-            retrieved_docs,
+            retrieval,
+            formatted_retrieved_docs,
             bundle,
         )
         messages = {"messages": [system_message] + conversation}
@@ -110,22 +112,26 @@ class Client:
             "metadata": {
                 "prompt_version": bundle.version,
                 "model": MODEL,
+                "git_sha": git_sha(),
                 "request_id": get_request_id(),
                 "conversation_id": get_conversation_id(),
             }
         }
-        self._record_request(chat_request, fen, docs, bundle)
+        self._record_request(chat_request, fen, retrieval, bundle)
         return PreparedRun(
             agent=agent,
             messages=messages,
             config=config,
             status_messages=status_messages,
-            retrieved_docs=retrieved_docs,
+            retrieved_docs=formatted_retrieved_docs,
         )
 
     @staticmethod
     def _record_request(
-        chat_request: ChatRequest, fen: str, docs: list, bundle: PromptBundle
+        chat_request: ChatRequest,
+        fen: str,
+        retrieval: Retrieval,
+        bundle: PromptBundle,
     ) -> None:
         """Note what the incoming request asked about, and what is answering it,
         on the current event."""
@@ -145,8 +151,9 @@ class Client:
         event.pgn = chat_request.pgn
         event.fen = fen
         event.ply = get_ply_from_fen(fen)
-        event.docs_hit = bool(docs)
-        event.docs_count = len(docs)
+        event.docs_hit = bool(retrieval.docs)
+        event.docs_count = len(retrieval.docs)
+        event.docs_plies_back = retrieval.plies_back if retrieval.docs else None
 
     async def run(self, chat_request: ChatRequest) -> AgentResponse:
         """Run the agent to completion, returning the answer text, the tools it
@@ -244,10 +251,18 @@ class Client:
 
     @staticmethod
     def _inject_position_context(
-        messages: list[BaseMessage], pgn: str, docs: str, bundle: PromptBundle
+        messages: list[BaseMessage],
+        pgn: str,
+        retrieval: Retrieval,
+        docs: str,
+        bundle: PromptBundle,
     ) -> list[BaseMessage]:
         """Insert current-position context (a position profile, then any
-        retrieved opening theory) just before the latest user message."""
+        retrieved opening theory) just before the latest user message.
+
+        Theory retrieved for an earlier position is labelled as such, so it is
+        not read as a description of the position on the board.
+        """
         if not messages:
             return messages
 
@@ -259,8 +274,18 @@ class Client:
             )
         ]
 
-        if docs:
+        if docs and retrieval.is_exact:
             context.append(HumanMessage(bundle.docs_preamble.format(docs=docs)))
+        elif docs:
+            context.append(
+                HumanMessage(
+                    bundle.ancestor_docs_preamble.format(
+                        docs=docs,
+                        plies_back=retrieval.plies_back,
+                        moves_since=" ".join(retrieval.moves_since),
+                    )
+                )
+            )
         else:
             context.append(HumanMessage(bundle.no_docs_fallback))
 

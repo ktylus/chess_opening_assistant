@@ -5,11 +5,19 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from backend.agent.chat_models import ChatRequest, Message, MessageRole
 from backend.agent.client import ERROR_MESSAGE, MODEL, Client, PreparedRun
+from backend.agent.doc_models import OpeningDoc
 from backend.agent.prompt_bundle import build_bundle
+from backend.agent.tools import Retrieval
 from backend.observability import Outcome, git_sha, start_event
+from tests.agent.factories import opening_doc
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 RUY_LOPEZ_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5"
+
+
+def exact_retrieval(docs: list[OpeningDoc]) -> Retrieval:
+    """A retrieval of ``docs`` for the position on the board itself."""
+    return Retrieval(docs=docs, plies_back=0, moves_since=())
 
 
 class FakeAgent:
@@ -118,7 +126,10 @@ def test_record_request_captures_question_position_and_retrieval():
     )
 
     Client._record_request(
-        chat_request, STARTING_FEN, docs=[{"text": "..."}], bundle=build_bundle([])
+        chat_request,
+        STARTING_FEN,
+        retrieval=exact_retrieval([opening_doc()]),
+        bundle=build_bundle([]),
     )
 
     assert event.turn == 3
@@ -128,18 +139,39 @@ def test_record_request_captures_question_position_and_retrieval():
     assert event.ply == 0
     assert event.docs_hit is True
     assert event.docs_count == 1
+    assert event.docs_plies_back == 0
 
 
 def test_record_request_marks_a_retrieval_miss():
     event = start_event()
 
     Client._record_request(
-        ChatRequest(messages=[]), STARTING_FEN, docs=[], bundle=build_bundle([])
+        ChatRequest(messages=[]),
+        STARTING_FEN,
+        retrieval=exact_retrieval([]),
+        bundle=build_bundle([]),
     )
 
     assert event.docs_hit is False
     assert event.docs_count == 0
+    assert event.docs_plies_back is None
     assert event.question is None
+
+
+def test_record_request_records_how_far_back_the_docs_came_from():
+    event = start_event()
+
+    Client._record_request(
+        ChatRequest(messages=[]),
+        STARTING_FEN,
+        retrieval=Retrieval(
+            docs=[opening_doc()], plies_back=2, moves_since=("Nf3", "Nc6")
+        ),
+        bundle=build_bundle([]),
+    )
+
+    assert event.docs_hit is True
+    assert event.docs_plies_back == 2
 
 
 def test_record_request_stamps_what_is_answering():
@@ -149,7 +181,10 @@ def test_record_request_stamps_what_is_answering():
     bundle = build_bundle([])
 
     Client._record_request(
-        ChatRequest(messages=[]), STARTING_FEN, docs=[], bundle=bundle
+        ChatRequest(messages=[]),
+        STARTING_FEN,
+        retrieval=exact_retrieval([]),
+        bundle=bundle,
     )
 
     assert event.prompt_version == bundle.version

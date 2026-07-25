@@ -8,7 +8,10 @@ from backend.agent.tools import (
     make_stockfish_eval_tool,
     retrieve_opening_docs,
 )
-from backend.chess_utils.board_state import get_position_key_from_fen
+from backend.chess_utils.board_state import (
+    get_fen_from_pgn,
+    get_position_key_from_fen,
+)
 
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 
@@ -16,30 +19,81 @@ STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 @pytest.mark.parametrize(
-    "fen, expected_names",
+    "pgn, expected_names",
     [
-        ("rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1", ["Ware Opening"]),
-        # Same position, different move counters (transposition): must still match.
-        ("rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 7 9", ["Ware Opening"]),
-        (
-            "rnbqkbnr/pppppppp/8/8/8/1P6/P1PPPPPP/RNBQKBNR b KQkq - 0 1",
-            ["Nimzowitsch–Larsen attack"],
-        ),
-        (
-            "rnbqkbnr/pppp1ppp/8/4p3/8/1P6/P1PPPPPP/RNBQKBNR w KQkq - 0 2",
-            ["Modern variation"],
-        ),
-        (
-            "rnbqkbnr/pp1ppppp/8/2p5/1PP5/8/P2PPPPP/RNBQKBNR b KQkq - 0 2",
-            ["Queen's Wing Gambit"],
-        ),
-        ("nonexistent fen", []),
+        ("1. a4", ["Ware Opening"]),
+        ("1. b3", ["Nimzowitsch–Larsen attack"]),
+        ("1. b3 e5", ["Modern variation"]),
+        ("1. c4 c5 2. b4", ["Queen's Wing Gambit"]),
+        # Reached by a different move order: matching is by position, not by line.
+        ("1. b4 c5 2. c4", ["Queen's Wing Gambit"]),
     ],
 )
-def test_retrieve_docs_by_fen(fen, expected_names):
-    docs = retrieve_opening_docs(fen, TEST_DATA_PATH)
-    assert [doc["metadata"]["name"] for doc in docs] == expected_names
-    assert all(doc["metadata"]["epd"] == get_position_key_from_fen(fen) for doc in docs)
+def test_retrieve_docs_for_the_position_on_the_board(pgn, expected_names):
+    retrieval = retrieve_opening_docs(pgn, TEST_DATA_PATH, max_plies_back=0)
+    assert [doc["metadata"]["name"] for doc in retrieval.docs] == expected_names
+    assert all(
+        doc["metadata"]["epd"] == get_position_key_from_fen(get_fen_from_pgn(pgn))
+        for doc in retrieval.docs
+    )
+
+
+def test_exact_match_is_preferred_over_walking_back():
+    retrieval = retrieve_opening_docs(
+        "1. b4 e5 2. Bb2 Bxb4", TEST_DATA_PATH, max_plies_back=4
+    )
+    assert [doc["metadata"]["name"] for doc in retrieval.docs] == [
+        "Polish Opening, Main Line"
+    ]
+    assert retrieval.is_exact
+    assert retrieval.plies_back == 0
+    assert retrieval.moves_since == ()
+
+
+def test_walks_back_to_nearest_ancestor_with_docs():
+    # No doc covers 1. b4 e5 2. Bb2 or 1. b4 e5; the nearest one is 1. b4.
+    retrieval = retrieve_opening_docs(
+        "1. b4 e5 2. Bb2", TEST_DATA_PATH, max_plies_back=4
+    )
+    assert [doc["metadata"]["name"] for doc in retrieval.docs] == ["Polish Opening"]
+    assert not retrieval.is_exact
+    assert retrieval.plies_back == 2
+    assert retrieval.moves_since == ("e5", "Bb2")
+
+
+def test_walk_back_stops_at_the_first_hit():
+    # Both 1. c4 e5 2. Nc3 Nc6 and 1. c4 have docs; only the nearer is returned.
+    retrieval = retrieve_opening_docs(
+        "1. c4 e5 2. Nc3 Nc6 3. g3", TEST_DATA_PATH, max_plies_back=4
+    )
+    assert [doc["metadata"]["name"] for doc in retrieval.docs] == ["English Opening"]
+    assert retrieval.plies_back == 1
+    assert retrieval.moves_since == ("g3",)
+
+
+def test_walk_back_respects_the_ply_cap():
+    # 1. b4 is 3 plies back, so a cap of 2 must not reach it.
+    pgn = "1. b4 e5 2. Bb2 Nc6"
+    assert retrieve_opening_docs(pgn, TEST_DATA_PATH, max_plies_back=2).docs == []
+    within_cap = retrieve_opening_docs(pgn, TEST_DATA_PATH, max_plies_back=3)
+    assert [doc["metadata"]["name"] for doc in within_cap.docs] == ["Polish Opening"]
+
+
+def test_no_walk_back_when_disabled():
+    retrieval = retrieve_opening_docs(
+        "1. b4 e5 2. Bb2", TEST_DATA_PATH, max_plies_back=0
+    )
+    assert retrieval.docs == []
+    assert retrieval.plies_back == 0
+
+
+def test_miss_reports_no_docs_at_zero_plies_back():
+    retrieval = retrieve_opening_docs(
+        "1. h4 h5 2. Rh3", TEST_DATA_PATH, max_plies_back=4
+    )
+    assert retrieval.docs == []
+    assert retrieval.is_exact
+    assert retrieval.moves_since == ()
 
 
 @pytest.mark.integration

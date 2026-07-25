@@ -38,6 +38,9 @@ class ChatEvent:
     ply: int | None = None
     docs_hit: bool | None = None
     docs_count: int | None = None
+    # How many half-moves before the board position the docs describe; 0 when
+    # they describe it exactly, None when nothing was retrieved.
+    docs_plies_back: int | None = None
     tools_called: list[str] = field(default_factory=list)
     ttft_ms: int | None = None
     total_ms: int | None = None

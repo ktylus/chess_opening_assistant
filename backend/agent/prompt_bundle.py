@@ -19,6 +19,7 @@ class PromptBundle:
         "position_context_template",
         "profile_preamble",
         "docs_preamble",
+        "ancestor_docs_preamble",
         "no_docs_fallback",
         "doc_format",
         "profile_text",
@@ -32,6 +33,7 @@ class PromptBundle:
         self.position_context_template = prompts.POSITION_CONTEXT_TEMPLATE
         self.profile_preamble = prompts.PROFILE_PREAMBLE
         self.docs_preamble = prompts.DOCS_PREAMBLE
+        self.ancestor_docs_preamble = prompts.ANCESTOR_DOCS_PREAMBLE
         self.no_docs_fallback = prompts.NO_DOCS_FALLBACK
         self.doc_format = prompts.DOC_FORMAT
         self.profile_text = position_profile.model_facing_text()
@@ -45,6 +47,7 @@ class PromptBundle:
             "position_context_template": self.position_context_template,
             "profile_preamble": self.profile_preamble,
             "docs_preamble": self.docs_preamble,
+            "ancestor_docs_preamble": self.ancestor_docs_preamble,
             "no_docs_fallback": self.no_docs_fallback,
             "doc_format": self.doc_format,
             "profile_text": self.profile_text,
