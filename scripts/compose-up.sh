@@ -12,5 +12,14 @@ if [ -n "$(git status --porcelain)" ]; then
   sha="${sha}-dirty"
 fi
 
+# With no arguments Compose picks up compose.override.yaml and runs the dev
+# stack. --prod names the files explicitly, which is what excludes the
+# override; see compose.prod.yaml.
+files=()
+if [ "${1:-}" = "--prod" ]; then
+  shift
+  files=(-f compose.yaml -f compose.prod.yaml)
+fi
+
 export GIT_SHA="$sha"
-exec docker compose up --build "$@"
+exec docker compose "${files[@]}" up --build "$@"

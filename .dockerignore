@@ -2,6 +2,8 @@
 # which is why this file is kept there.
 .venv
 frontend/node_modules
+# Built inside the image by the node stage; a stale host build must not be included.
+frontend/dist
 .git
 .pytest_cache
 .ruff_cache

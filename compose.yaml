@@ -1,8 +1,12 @@
+# Base configuration, shared by dev and prod.
+#
+# `docker compose up` also reads compose.override.yaml automatically, so the
+# plain local run is the dev one. See compose.prod.yaml for the other path.
 services:
   backend:
     build:
-      # Context is the repo root (pyproject.toml, uv.lock, backend/, data/ all
-      # live there); the Dockerfile itself sits in backend/.
+      # Context is the repo root (pyproject.toml, uv.lock, backend/, data/,
+      # frontend/ all live there); the Dockerfile itself sits in backend/.
       context: .
       dockerfile: backend/Dockerfile
       args:
@@ -14,31 +18,6 @@ services:
     env_file:
       - .env
     environment:
-      # Override the host's STOCKFISH_PATH from .env: inside the image the
-      # binary is on PATH.
+      # The image already sets this, but .env carries the host's path and
+      # env_file wins over the image, so restate it here.
       STOCKFISH_PATH: /usr/games/stockfish
-    volumes:
-      # Bind-mount source for hot reload (uvicorn --reload). Only the code and
-      # data are mounted, never the repo root — that would clobber the Linux
-      # .venv baked into the image with the host's Windows one.
-      - ./backend:/app/backend
-      - ./data:/app/data:ro
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "5173:5173"
-    environment:
-      # The Vite dev server proxies /chat here. Inside the network, the backend
-      # is reachable by its service name, not localhost.
-      BACKEND_URL: http://backend:8000
-    volumes:
-      # Bind-mount source for hot reload...
-      - ./frontend:/app
-      # ...but keep the container's node_modules (installed for Linux) from
-      # being shadowed by the host mount.
-      - /app/node_modules
-    depends_on:
-      - backend

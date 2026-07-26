@@ -1,0 +1,37 @@
+# Development, layered on compose.yaml. Compose loads this file automatically,
+# so `docker compose up` gets the dev stack.
+#
+# Dev runs two containers: uvicorn with reload, and the Vite dev server for
+# HMR. The production image collapses them into one -- see compose.prod.yaml.
+services:
+  backend:
+    build:
+      target: dev
+    volumes:
+      # Bind-mount source for hot reload (uvicorn --reload). Only the code and
+      # data are mounted, never the repo root -- that would clobber the Linux
+      # .venv baked into the image with the host's Windows one.
+      - ./backend:/app/backend
+      - ./data:/app/data:ro
+      # Not in the image -- the production runtime has no use for them -- but
+      # mounted here so `docker compose exec backend pytest` works.
+      - ./tests:/app/tests:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      # The Vite dev server proxies /chat here. Inside the network, the backend
+      # is reachable by its service name, not localhost.
+      BACKEND_URL: http://backend:8000
+    volumes:
+      # Bind-mount source for hot reload...
+      - ./frontend:/app
+      # ...but keep the container's node_modules (installed for Linux) from
+      # being shadowed by the host mount.
+      - /app/node_modules
+    depends_on:
+      - backend

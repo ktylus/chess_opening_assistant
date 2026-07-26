@@ -1,0 +1,17 @@
+# The production image, run locally. Naming both files explicitly is what keeps
+# compose.override.yaml out:
+#
+#   ./scripts/compose-up.sh --prod
+#   docker compose -f compose.yaml -f compose.prod.yaml up --build
+#
+# There is no frontend service here. The built Vite app lives inside the
+# backend image and FastAPI serves it, so everything is on port 8000.
+services:
+  backend:
+    build:
+      target: runtime
+    # The smallest App Runner instance. Reproducing that ceiling locally is how
+    # the sizing question in notes/deployment_plan.md gets answered before the
+    # service config is written -- the container is OOM-killed if it does not
+    # fit, which is a much clearer signal than a failing deploy.
+    mem_limit: 512m

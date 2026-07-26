@@ -1,3 +1,6 @@
+# Development only: this ships the Vite dev server, for HMR. Production builds
+# the app in the frontend stage of backend/Dockerfile and serves the result as
+# static files from FastAPI.
 FROM node:20-slim
 
 WORKDIR /app
