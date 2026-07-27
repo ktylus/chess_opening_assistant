@@ -8,12 +8,17 @@ from fastapi.staticfiles import StaticFiles
 from backend.agent.chat_models import ChatRequest
 from backend.agent.client import Client
 from backend.app.middleware import RequestContextMiddleware
+from backend.app.rate_limit import RateLimitMiddleware
 from backend.observability import bind_conversation, configure_logging
 
 configure_logging()
 
 app = FastAPI()
 app.add_middleware(RequestContextMiddleware)
+# Added last, so it wraps everything else and a refused request costs as little
+# as possible. Only /chat is limited: /health is polled by the platform on a
+# schedule, and a single page load pulls down many static assets.
+app.add_middleware(RateLimitMiddleware, paths={"/chat"})
 client = Client()
 
 

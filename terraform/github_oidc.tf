@@ -96,3 +96,42 @@ resource "aws_iam_role_policy" "ecr_push" {
   role   = aws_iam_role.github_actions.id
   policy = data.aws_iam_policy_document.ecr_push.json
 }
+
+# Deploying is a second, separate grant: point one named service at one image
+# and watch it settle. Notably absent are CreateService and DeleteService --
+# the service's existence and its shape stay with Terraform, and CI may only
+# change which image it runs.
+data "aws_iam_policy_document" "apprunner_deploy" {
+  statement {
+    sid    = "UpdateRunningImage"
+    effect = "Allow"
+    actions = [
+      "apprunner:DescribeService",
+      "apprunner:UpdateService",
+    ]
+    resources = [aws_apprunner_service.app.arn]
+  }
+
+  # UpdateService restates the source configuration, which names the role App
+  # Runner pulls the image with -- and handing a role to a service is itself a
+  # privileged act. Scoped to that one role, and conditioned on the service it
+  # may be handed to, so this cannot become a way to assume something better.
+  statement {
+    sid       = "PassImagePullRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [aws_iam_role.apprunner_access.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["build.apprunner.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "apprunner_deploy" {
+  name   = "apprunner-deploy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.apprunner_deploy.json
+}
