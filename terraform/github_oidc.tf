@@ -71,11 +71,17 @@ data "aws_iam_policy_document" "ecr_push" {
   # Upload, and only into this one repository. No delete, no repository policy
   # changes, and nothing at all outside ECR -- which is what makes it safe for
   # this role to be assumable by an automated system.
+  #
+  # BatchGetImage is a read, and is required despite this being a push-only
+  # role: the registry protocol has the client HEAD the manifest before
+  # uploading it, and ECR authorises manifest reads with that action. Without
+  # it the push fails at the very last step with a bare 403.
   statement {
     sid    = "PushImages"
     effect = "Allow"
     actions = [
       "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
       "ecr:CompleteLayerUpload",
       "ecr:InitiateLayerUpload",
       "ecr:PutImage",
