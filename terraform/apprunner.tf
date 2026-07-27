@@ -53,7 +53,7 @@ resource "aws_iam_role" "apprunner_instance" {
   assume_role_policy = data.aws_iam_policy_document.apprunner_instance_assume.json
 }
 
-# The parameter is a SecureString, so reading it is two permissions, not one:
+# The parameters are SecureStrings, so reading one is two permissions, not one:
 # fetching the ciphertext from SSM and decrypting it with the AWS-managed key
 # that SSM used. Granting only the first fails at deploy time with an error
 # that names neither KMS nor the key.
@@ -61,11 +61,17 @@ data "aws_kms_alias" "ssm" {
   name = "alias/aws/ssm"
 }
 
-data "aws_iam_policy_document" "read_api_key" {
+# Scoped to exactly the parameters the container reads, so a new secret in
+# ssm.tf must be added here too -- omitting it fails the deployment with an
+# error that does not name the parameter it could not read.
+data "aws_iam_policy_document" "read_api_keys" {
   statement {
-    effect    = "Allow"
-    actions   = ["ssm:GetParameters"]
-    resources = [aws_ssm_parameter.google_api_key.arn]
+    effect  = "Allow"
+    actions = ["ssm:GetParameters"]
+    resources = [
+      aws_ssm_parameter.google_api_key.arn,
+      aws_ssm_parameter.lichess_api_key.arn,
+    ]
   }
 
   statement {
@@ -75,10 +81,10 @@ data "aws_iam_policy_document" "read_api_key" {
   }
 }
 
-resource "aws_iam_role_policy" "read_api_key" {
-  name   = "read-api-key"
+resource "aws_iam_role_policy" "read_api_keys" {
+  name   = "read-api-keys"
   role   = aws_iam_role.apprunner_instance.id
-  policy = data.aws_iam_policy_document.read_api_key.json
+  policy = data.aws_iam_policy_document.read_api_keys.json
 }
 
 # ---------------------------------------------------------------------------
@@ -125,9 +131,12 @@ resource "aws_apprunner_service" "app" {
         port = "8000"
 
         # Resolved by App Runner at instance start using the instance role, so
-        # the value appears in the container's environment and nowhere else.
+        # the values appear in the container's environment and nowhere else.
+        # Plain runtime_environment_variables would hold them in the service
+        # configuration instead, where DescribeService returns them in clear.
         runtime_environment_secrets = {
-          GOOGLE_API_KEY = aws_ssm_parameter.google_api_key.arn
+          GOOGLE_API_KEY  = aws_ssm_parameter.google_api_key.arn
+          LICHESS_API_KEY = aws_ssm_parameter.lichess_api_key.arn
         }
       }
     }

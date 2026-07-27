@@ -61,6 +61,12 @@ variable "google_api_key_parameter" {
   default     = "/chess-opening-assistant/google-api-key"
 }
 
+variable "lichess_api_key_parameter" {
+  description = "Parameter Store path holding the Lichess API token."
+  type        = string
+  default     = "/chess-opening-assistant/lichess-api-key"
+}
+
 variable "log_retention_days" {
   description = "How long App Runner's log groups keep events."
   type        = number
