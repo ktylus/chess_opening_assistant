@@ -114,19 +114,18 @@ data "aws_iam_policy_document" "apprunner_deploy" {
 
   # UpdateService restates the source configuration, which names the role App
   # Runner pulls the image with -- and handing a role to a service is itself a
-  # privileged act. Scoped to that one role, and conditioned on the service it
-  # may be handed to, so this cannot become a way to assume something better.
+  # privileged act, so it is granted for exactly one role and no other.
+  #
+  # An iam:PassedToService condition would be the belt-and-braces version, but
+  # App Runner does not report the value its own documentation implies for this
+  # call and the condition simply never matches. Little is lost: the role named
+  # here can only be assumed by App Runner's build principal in the first
+  # place, so passing it elsewhere achieves nothing.
   statement {
     sid       = "PassImagePullRole"
     effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [aws_iam_role.apprunner_access.arn]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values   = ["build.apprunner.amazonaws.com"]
-    }
   }
 }
 
