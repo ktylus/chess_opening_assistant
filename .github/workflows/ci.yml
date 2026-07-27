@@ -30,3 +30,64 @@ jobs:
 
       - name: Test
         run: uv run pytest -m "not integration"
+
+  # Publishes the production image to ECR, nothing deploys it yet.
+  build-push:
+    # Gated on the tests, and on the commit having landed on main -- a pull
+    # request must never produce a pushed image. Both conditions matter: the
+    # trust policy in terraform/github_oidc.tf would reject a pull request run
+    # anyway, but failing here gives a comprehensible error instead of an
+    # opaque STS denial.
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # Lets GitHub mint the OIDC token that AWS exchanges for credentials.
+      # Omitting it fails with a missing-token error rather than a permissions
+      # one, which is the single most common way this setup breaks.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve short commit SHA
+        id: commit
+        # github.sha is the full 40 characters, but scripts/compose-up.sh and
+        # backend/observability/provenance.py both use git's 7-character
+        # abbreviation. Truncating here keeps the image tag, the GIT_SHA baked
+        # into the image, and every log line the same string -- which is the
+        # whole point of tagging by commit.
+        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Assume AWS role
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          # Repo root, matching compose.yaml: the Dockerfile lives in backend/
+          # but reads pyproject.toml, uv.lock, data/ and frontend/ from here.
+          context: .
+          file: backend/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/chess-opening-assistant:${{ steps.commit.outputs.sha }}
+          build-args: |
+            GIT_SHA=${{ steps.commit.outputs.sha }}
+          # The runner is a fresh machine every run, so without a cache each
+          # build reinstalls npm packages and re-resolves the venv from scratch.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

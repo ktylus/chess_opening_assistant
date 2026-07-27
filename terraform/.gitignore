@@ -1,0 +1,18 @@
+# Provider binaries and module downloads, restored by `terraform init`.
+.terraform/
+
+# State. Local, because this is a single operator with no concurrent applies;
+# an S3 backend would need bootstrapping by something that is not Terraform.
+# Untracked because state is a record of what exists, not a description of what
+# should -- the .tf files are the source of truth -- and because it stores
+# resource attributes verbatim, including any that are sensitive.
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Variable overrides are per-machine and routinely hold secrets.
+*.tfvars
+*.tfvars.json
+
+# .terraform.lock.hcl is deliberately NOT ignored: it pins provider versions
+# and checksums, and is what makes an apply reproducible.
