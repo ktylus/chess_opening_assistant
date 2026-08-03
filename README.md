@@ -1,6 +1,6 @@
 # ♟ Chess Opening Assistant
 
-[![CI](https://github.com/ktylus/chess_opening_assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/ktylus/chess_opening_assistant/actions/workflows/ci.yml)
+[![CI](https://github.com/ktylus/chess_opening_assistant/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ktylus/chess_opening_assistant/actions/workflows/ci-cd.yml)
 
 An agentic assistant helping beginners and intermediate chess players explore ideas behind openings. Put a position on the board and engage in conversation.
 
