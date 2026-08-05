@@ -6,6 +6,11 @@ An agentic assistant helping beginners and intermediate chess players explore id
 
 LLMs are notoriously weak at calculating chess, so this assistant uses large volumes of absorbed commentary to explain ideas behind opening lines.
 
+**[Try it yourself](https://mnwjhbdxsk.eu-central-1.awsapprunner.com/)**
+
+The service might be paused at times to keep the costs limited.
+If it's down, the demo below covers basic usage.
+
 
 ## Demo
 
@@ -119,6 +124,12 @@ docker compose up --build      # build images and start both services
 ```
 
 Open http://localhost:5173. Stop with `Ctrl-C`, or `docker compose down` to remove the containers.
+
+
+## Deployment
+
+The app is deployed on AWS App Runner. Images stored on AWS ECR, continuously deployed on successful Actions main branch pipeline passes. Infrastructure managed with Terraform.
+Rate limits, spending limits and alarms set up to combat attacks abusing the underlying LLM.
 
 
 ## Data Sources
