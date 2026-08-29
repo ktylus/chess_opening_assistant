@@ -82,7 +82,7 @@ def make_target(client: Client):
 
 
 def tool_usage_evaluator(outputs: dict, reference_outputs: dict) -> dict:
-    """Deterministic: did the agent fire every tool it was expected to?"""
+    """Deterministic: did the agent fire exactly the expected set of tools?"""
     result = score_tool_usage(
         reference_outputs["expected_tools"], outputs["tool_calls"]
     )

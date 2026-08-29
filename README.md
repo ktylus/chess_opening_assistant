@@ -93,7 +93,7 @@ Responses are scored on the following dimensions:
 - Correctness
 - Scope adherence
 
-In addition to that, each evaluation example is labeled with a set of tools the agent is expected to use. Responses are graded on the tool use dimension - the agent passes for a given query if it uses required tools. Otherwise, the result is negative.
+In addition to that, each evaluation example is labeled with the exact set of tools the agent is expected to use. Responses are graded on the tool use dimension: the agent passes only if it uses all and only those tools. Missing and unnecessary tools both result in a negative score.
 
 Prompts, model information and results are logged in LangSmith for experiment tracking.
 

@@ -33,14 +33,13 @@ class ToolUsageResult:
 def score_tool_usage(
     expected_tools: list[str], actual_tools: list[str]
 ) -> ToolUsageResult:
-    """Did the agent call every tool it was expected to?
+    """Did the agent call exactly the expected set of tools?
 
-    Subset (not exact) set comparison: every expected tool must have fired, but
-    extra tool calls are fine — overcalling isn't penalised here, only failing to
-    use a tool the task required. Order and duplicate calls don't matter. An
-    empty expected set always passes (nothing was required).
+    Exact set comparison: missing and unexpected tool names both fail. Call
+    order and duplicate calls don't matter; those are separate from selecting
+    the correct tools.
     """
-    passed = set(expected_tools) <= set(actual_tools)
+    passed = set(expected_tools) == set(actual_tools)
     return ToolUsageResult(expected=expected_tools, actual=actual_tools, passed=passed)
 
 
