@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from backend.agent.tools import (
+    LICHESS_CACHE_TTL_SECONDS,
     STOCKFISH_LINES,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
@@ -16,6 +17,23 @@ from backend.chess_utils.board_state import (
 TEST_DATA_PATH = Path(__file__).parent / "test_data.jsonl"
 
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
+class StubCache:
+    def __init__(self, value=None):
+        self.value = value
+        self.lookups = []
+        self.writes = []
+
+    def get(self, key, *, tool):
+        self.lookups.append((key, tool))
+        return self.value
+
+    def set(self, key, value, *, tool, ttl_seconds):
+        self.writes.append((key, value, tool, ttl_seconds))
+
+    def close(self):
+        pass
 
 
 @pytest.mark.parametrize(
@@ -123,3 +141,52 @@ def test_position_is_hidden_from_model_tool_schemas():
     for position_tool in tools:
         assert "fen" in position_tool.get_input_schema().model_fields
         assert "fen" not in position_tool.tool_call_schema.model_fields
+
+
+def test_stockfish_cache_hit_skips_engine(monkeypatch):
+    cache = StubCache("cached engine result")
+    monkeypatch.setattr(
+        "backend.agent.tools.chess.engine.SimpleEngine.popen_uci",
+        lambda path: pytest.fail("Stockfish must not run on a cache hit"),
+    )
+    monkeypatch.setattr("backend.agent.tools.stockfish_version", lambda path: "17")
+
+    tool = make_stockfish_eval_tool(cache=cache).tool
+
+    assert tool.invoke({"fen": STARTING_FEN}) == "cached engine result"
+    assert len(cache.lookups) == 1
+    assert cache.writes == []
+
+
+def test_lichess_cache_hit_skips_http_request(monkeypatch):
+    cache = StubCache("cached explorer result")
+    monkeypatch.setattr(
+        "backend.agent.tools.requests.get",
+        lambda *args, **kwargs: pytest.fail("Lichess must not run on a cache hit"),
+    )
+
+    tool = make_lichess_masters_opening_explorer_tool(cache=cache).tool
+
+    assert tool.invoke({"fen": STARTING_FEN}) == "cached explorer result"
+    assert len(cache.lookups) == 1
+    assert cache.writes == []
+
+
+def test_lichess_cache_miss_writes_result_with_one_day_ttl(monkeypatch):
+    cache = StubCache()
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"white": 0, "draws": 0, "black": 0, "moves": []}
+
+    monkeypatch.setattr("backend.agent.tools.requests.get", lambda *a, **k: Response())
+
+    tool = make_lichess_masters_opening_explorer_tool(cache=cache).tool
+    result = tool.invoke({"fen": STARTING_FEN})
+
+    assert result == "No master games found for this position."
+    assert cache.writes[0][1] == result
+    assert cache.writes[0][3] == LICHESS_CACHE_TTL_SECONDS

@@ -11,18 +11,26 @@ from backend.agent.chat_models import ChatRequest
 from backend.agent.client import Client
 from backend.app.middleware import RequestContextMiddleware
 from backend.app.rate_limit import RateLimitMiddleware
+from backend.cache import ToolCache, cache_from_env
 from backend.observability import bind_conversation, configure_logging
 
 configure_logging()
 
 
-def create_app(client_factory: Callable[[], Client] = Client) -> FastAPI:
+def create_app(
+    client_factory: Callable[[ToolCache], Client] = Client,
+    cache_factory: Callable[[], ToolCache] = cache_from_env,
+) -> FastAPI:
     """Create the API and own its shared resources for one process lifespan."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.client = client_factory()
-        yield
+        cache = cache_factory()
+        app.state.client = client_factory(cache)
+        try:
+            yield
+        finally:
+            cache.close()
 
     app = FastAPI(lifespan=lifespan)
     app.add_middleware(RequestContextMiddleware)

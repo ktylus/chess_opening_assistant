@@ -15,6 +15,7 @@ from langchain_core.tools import BaseTool, InjectedToolArg
 
 from backend.agent.doc_models import OpeningDoc
 from backend.agent.prompts import DOC_FORMAT
+from backend.cache import NoOpCache, ToolCache, cache_key
 from backend.chess_utils.board_state import get_position_lineage
 from backend.observability.provenance import UNKNOWN
 
@@ -50,6 +51,8 @@ STOCKFISH_THINK_TIME = 2.0
 STOCKFISH_LINES = 2
 LICHESS_MASTERS_URL = "https://explorer.lichess.org/masters"
 LICHESS_TOP_MOVES = 5
+STOCKFISH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+LICHESS_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 
 ENGINE_LINE = "Line {n} ({score}): {moves}"
@@ -185,18 +188,34 @@ def format_opening_docs(docs: list[OpeningDoc]) -> str:
 
 
 def make_stockfish_eval_tool(
+    cache: ToolCache | None = None,
     stockfish_path: str | None = None,
     think_time: float = STOCKFISH_THINK_TIME,
     num_lines: int = STOCKFISH_LINES,
+    cache_ttl_seconds: int = STOCKFISH_CACHE_TTL_SECONDS,
 ):
     """Build a Stockfish tool whose position is injected by the workflow."""
     resolved_path = resolve_stockfish_path(stockfish_path)
+    result_cache = cache or NoOpCache()
 
     @tool
     def evaluate_position_with_stockfish(
         fen: Annotated[str, InjectedToolArg],
     ) -> str:
         """Evaluate the current board position using Stockfish, returning the top engine lines with scores."""
+        key = cache_key(
+            "stockfish:v1",
+            {
+                "fen": fen,
+                "stockfish_version": stockfish_version(resolved_path),
+                "think_time": think_time,
+                "num_lines": num_lines,
+            },
+        )
+        cached = result_cache.get(key, tool=evaluate_position_with_stockfish.name)
+        if cached is not None:
+            return cached
+
         board = chess.Board(fen)
         with chess.engine.SimpleEngine.popen_uci(resolved_path) as engine:
             results = engine.analyse(
@@ -222,7 +241,14 @@ def make_stockfish_eval_tool(
             moves = " ".join(_moves_to_san(board.copy(), pv))
             lines.append(ENGINE_LINE.format(n=i + 1, score=score_str, moves=moves))
 
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        result_cache.set(
+            key,
+            result,
+            tool=evaluate_position_with_stockfish.name,
+            ttl_seconds=cache_ttl_seconds,
+        )
+        return result
 
     return AgentTool(
         tool=evaluate_position_with_stockfish,
@@ -241,16 +267,34 @@ def _moves_to_san(board: chess.Board, moves: list[chess.Move]) -> list[str]:
     return result
 
 
-def make_lichess_masters_opening_explorer_tool():
+def make_lichess_masters_opening_explorer_tool(
+    cache: ToolCache | None = None,
+    cache_ttl_seconds: int = LICHESS_CACHE_TTL_SECONDS,
+):
     """Build a Lichess tool whose position is injected by the workflow."""
     token = os.environ.get("LICHESS_API_KEY")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    result_cache = cache or NoOpCache()
 
     @tool
     def get_lichess_masters_opening_data(
         fen: Annotated[str, InjectedToolArg],
     ) -> str:
         """Get move statistics from master games in the current position."""
+        key = cache_key(
+            "lichess-masters:v1",
+            {
+                "fen": fen,
+                "url": LICHESS_MASTERS_URL,
+                "top_moves": LICHESS_TOP_MOVES,
+            },
+        )
+        cached = result_cache.get(
+            key, tool=get_lichess_masters_opening_data.name
+        )
+        if cached is not None:
+            return cached
+
         query = urlencode(
             {"fen": fen, "moves": LICHESS_TOP_MOVES, "topGames": 0}, quote_via=quote
         )
@@ -264,6 +308,12 @@ def make_lichess_masters_opening_explorer_tool():
 
         position_total = data["white"] + data["draws"] + data["black"]
         if position_total == 0:
+            result_cache.set(
+                key,
+                EXPLORER_NO_GAMES,
+                tool=get_lichess_masters_opening_data.name,
+                ttl_seconds=cache_ttl_seconds,
+            )
             return EXPLORER_NO_GAMES
 
         lines = [EXPLORER_HEADER.format(total=position_total)]
@@ -285,7 +335,14 @@ def make_lichess_masters_opening_explorer_tool():
                 )
             )
 
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        result_cache.set(
+            key,
+            result,
+            tool=get_lichess_masters_opening_data.name,
+            ttl_seconds=cache_ttl_seconds,
+        )
+        return result
 
     return AgentTool(
         tool=get_lichess_masters_opening_data,

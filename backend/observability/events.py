@@ -42,6 +42,7 @@ class ChatEvent:
     # they describe it exactly, None when nothing was retrieved.
     docs_plies_back: int | None = None
     tools_called: list[str] = field(default_factory=list)
+    cache_events: list[dict[str, str]] = field(default_factory=list)
     ttft_ms: int | None = None
     total_ms: int | None = None
     chars_streamed: int = 0

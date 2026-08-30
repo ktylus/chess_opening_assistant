@@ -24,6 +24,7 @@ from backend.agent.tools import (
     make_stockfish_eval_tool,
 )
 from backend.agent.workflow import WorkflowState, build_workflow, retrieval_from_state
+from backend.cache import NoOpCache, ToolCache
 from backend.chess_utils.position_profile import build_profile, profile_to_text
 from backend.observability import (
     Outcome,
@@ -68,11 +69,12 @@ class AgentResponse:
 
 
 class Client:
-    def __init__(self):
+    def __init__(self, cache: ToolCache | None = None):
         load_dotenv()
+        self.cache = cache or NoOpCache()
         self.model = init_chat_model(model=MODEL, model_provider=MODEL_PROVIDER)
         self.checkpointer = InMemorySaver()
-        agent_tools = self._make_agent_tools()
+        agent_tools = self._make_agent_tools(self.cache)
         self.status_messages = {
             agent_tool.tool.name: agent_tool.status_message
             for agent_tool in agent_tools
@@ -88,11 +90,11 @@ class Client:
         )
 
     @staticmethod
-    def _make_agent_tools() -> list:
+    def _make_agent_tools(cache: ToolCache | None = None) -> list:
         """Build tools whose position is supplied from workflow state."""
         return [
-            make_stockfish_eval_tool(),
-            make_lichess_masters_opening_explorer_tool(),
+            make_stockfish_eval_tool(cache),
+            make_lichess_masters_opening_explorer_tool(cache),
         ]
 
     def prompt_bundle(self) -> PromptBundle:

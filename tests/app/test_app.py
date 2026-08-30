@@ -8,15 +8,31 @@ class FakeClient:
         yield "test response"
 
 
+class FakeCache:
+    def __init__(self):
+        self.closed = False
+
+    def get(self, key, *, tool):
+        return None
+
+    def set(self, key, value, *, tool, ttl_seconds):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
 def test_lifespan_creates_one_shared_client():
     created = []
+    cache = FakeCache()
 
-    def client_factory():
+    def client_factory(received_cache):
+        assert received_cache is cache
         client = FakeClient()
         created.append(client)
         return client
 
-    app = create_app(client_factory)  # type: ignore[arg-type]
+    app = create_app(client_factory, lambda: cache)  # type: ignore[arg-type]
 
     with TestClient(app) as test_client:
         assert app.state.client is created[0]
@@ -25,3 +41,4 @@ def test_lifespan_creates_one_shared_client():
 
     assert response.text == "test response"
     assert len(created) == 1
+    assert cache.closed
