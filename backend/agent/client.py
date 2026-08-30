@@ -24,7 +24,7 @@ from backend.agent.tools import (
     make_stockfish_eval_tool,
 )
 from backend.agent.workflow import WorkflowState, build_workflow, retrieval_from_state
-from backend.chess_utils.board_state import get_fen_from_pgn, get_ply_from_fen
+from backend.chess_utils.board_state import get_ply_from_fen
 from backend.chess_utils.position_profile import build_profile, profile_to_text
 from backend.observability import (
     Outcome,
@@ -75,21 +75,20 @@ class Client:
         self.checkpointer = InMemorySaver()
 
     @staticmethod
-    def _make_agent_tools(fen: str) -> list:
-        """Build the agent's tool set for a position."""
+    def _make_agent_tools() -> list:
+        """Build tools whose position is supplied from workflow state."""
         return [
-            make_stockfish_eval_tool(fen),
-            make_lichess_masters_opening_explorer_tool(fen),
+            make_stockfish_eval_tool(),
+            make_lichess_masters_opening_explorer_tool(),
         ]
 
     def prompt_bundle(self) -> PromptBundle:
         """Return the active prompt bundle (prompt text + tool descriptions)."""
-        tools = [at.tool for at in self._make_agent_tools(get_fen_from_pgn(""))]
+        tools = [at.tool for at in self._make_agent_tools()]
         return build_bundle(tools)
 
     def _prepare(self, chat_request: ChatRequest) -> PreparedRun:
-        fen = get_fen_from_pgn(chat_request.pgn)
-        agent_tools = self._make_agent_tools(fen)
+        agent_tools = self._make_agent_tools()
         status_messages = {at.tool.name: at.status_message for at in agent_tools}
         tools = [at.tool for at in agent_tools]
         bundle = build_bundle(tools)

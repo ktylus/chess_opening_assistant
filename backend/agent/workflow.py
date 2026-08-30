@@ -171,7 +171,15 @@ def build_workflow(
                 )
                 continue
             tool = tools_by_name[tool_name]
-            output = await tool.ainvoke(call.get("args", {}))
+            call_args = dict(call.get("args", {}))
+            # Inject trusted graph state into arguments hidden from the model.
+            # This keeps the compiled graph position-independent while ensuring
+            # the model cannot choose or alter the board passed to a tool.
+            input_fields = tool.get_input_schema().model_fields
+            model_fields = tool.tool_call_schema.model_fields
+            if "fen" in input_fields and "fen" not in model_fields:
+                call_args["fen"] = state["fen"]
+            output = await tool.ainvoke(call_args)
             called_in_response.add(tool_name)
             results.append(
                 ToolMessage(

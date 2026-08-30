@@ -1,5 +1,7 @@
+from typing import Annotated
+
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.tools import tool
+from langchain_core.tools import InjectedToolArg, tool
 from langgraph.checkpoint.memory import InMemorySaver
 
 from backend.agent.prompt_bundle import build_bundle
@@ -146,6 +148,39 @@ async def test_answer_branch_executes_tools_and_loops_back(monkeypatch):
         "ai",
     ]
     assert result["agent_messages"][-1].content == "Grounded answer"
+
+
+async def test_tool_position_is_injected_from_workflow_state(monkeypatch):
+    monkeypatch.setattr(
+        "backend.agent.workflow.retrieve_opening_docs",
+        lambda pgn: Retrieval(docs=[], plies_back=0, moves_since=()),
+    )
+    received_fen = None
+
+    @tool
+    def lookup(fen: Annotated[str, InjectedToolArg]) -> str:
+        """Return evidence for the current position."""
+        nonlocal received_fen
+        received_fen = fen
+        return "evidence"
+
+    model = ToolCallingModel()
+    graph = build_workflow(
+        model,  # type: ignore[arg-type]
+        build_bundle([lookup]),
+        [lookup],
+    )
+
+    result = await graph.ainvoke(
+        {
+            "input_messages": [HumanMessage("What is the plan?")],
+            "agent_messages": [],
+            "pgn": "1. e4",
+        }
+    )
+
+    assert received_fen == result["fen"]
+    assert "fen" not in lookup.tool_call_schema.model_fields
 
 
 async def test_duplicate_tool_requests_execute_only_once(monkeypatch):

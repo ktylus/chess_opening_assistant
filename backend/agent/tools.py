@@ -4,13 +4,14 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import quote, urlencode
 
 import chess
 import chess.engine
 import requests
 from langchain.tools import tool
-from langchain_core.tools import BaseTool
+from langchain_core.tools import BaseTool, InjectedToolArg
 
 from backend.agent.doc_models import OpeningDoc
 from backend.agent.prompts import DOC_FORMAT
@@ -184,16 +185,17 @@ def format_opening_docs(docs: list[OpeningDoc]) -> str:
 
 
 def make_stockfish_eval_tool(
-    fen: str,
     stockfish_path: str | None = None,
     think_time: float = STOCKFISH_THINK_TIME,
     num_lines: int = STOCKFISH_LINES,
 ):
-    """Build a tool that evaluates the given position with Stockfish."""
+    """Build a Stockfish tool whose position is injected by the workflow."""
     resolved_path = resolve_stockfish_path(stockfish_path)
 
     @tool
-    def evaluate_position_with_stockfish() -> str:
+    def evaluate_position_with_stockfish(
+        fen: Annotated[str, InjectedToolArg],
+    ) -> str:
         """Evaluate the current board position using Stockfish, returning the top engine lines with scores."""
         board = chess.Board(fen)
         with chess.engine.SimpleEngine.popen_uci(resolved_path) as engine:
@@ -239,13 +241,15 @@ def _moves_to_san(board: chess.Board, moves: list[chess.Move]) -> list[str]:
     return result
 
 
-def make_lichess_masters_opening_explorer_tool(fen: str):
-    """Build a tool that returns Lichess master-game statistics for the position."""
+def make_lichess_masters_opening_explorer_tool():
+    """Build a Lichess tool whose position is injected by the workflow."""
     token = os.environ.get("LICHESS_API_KEY")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
     @tool
-    def get_lichess_masters_opening_data() -> str:
+    def get_lichess_masters_opening_data(
+        fen: Annotated[str, InjectedToolArg],
+    ) -> str:
         """Get move statistics from master games in the current position."""
         query = urlencode(
             {"fen": fen, "moves": LICHESS_TOP_MOVES, "topGames": 0}, quote_via=quote

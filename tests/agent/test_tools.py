@@ -98,17 +98,28 @@ def test_miss_reports_no_docs_at_zero_plies_back():
 
 @pytest.mark.integration
 def test_lichess_masters_opening_explorer_returns_data():
-    agent_tool = make_lichess_masters_opening_explorer_tool(STARTING_FEN)
-    result = agent_tool.tool.invoke({})
+    agent_tool = make_lichess_masters_opening_explorer_tool()
+    result = agent_tool.tool.invoke({"fen": STARTING_FEN})
     assert isinstance(result, str)
     assert len(result) > 0
 
 
 @pytest.mark.integration
 def test_stockfish_eval_returns_correct_n_lines():
-    agent_tool = make_stockfish_eval_tool(STARTING_FEN)
-    result = agent_tool.tool.invoke({})
+    agent_tool = make_stockfish_eval_tool()
+    result = agent_tool.tool.invoke({"fen": STARTING_FEN})
     lines = [line for line in result.strip().split("\n") if line]
     assert len(lines) == STOCKFISH_LINES
     for i, line in enumerate(lines, start=1):
         assert line.startswith(f"Line {i}")
+
+
+def test_position_is_hidden_from_model_tool_schemas():
+    tools = [
+        make_stockfish_eval_tool().tool,
+        make_lichess_masters_opening_explorer_tool().tool,
+    ]
+
+    for position_tool in tools:
+        assert "fen" in position_tool.get_input_schema().model_fields
+        assert "fen" not in position_tool.tool_call_schema.model_fields
