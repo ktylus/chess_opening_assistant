@@ -39,6 +39,9 @@ def client(monkeypatch):
     monkeypatch.setattr(
         "backend.agent.client.init_chat_model", lambda **kwargs: object()
     )
+    monkeypatch.setattr(
+        "backend.agent.client.build_workflow", lambda *args, **kwargs: object()
+    )
     return Client()
 
 
@@ -56,6 +59,20 @@ def prepare_with(client, monkeypatch, agent):
 
 async def collect(stream):
     return "".join([chunk async for chunk in stream])
+
+
+def request_state(
+    chat_request: ChatRequest, fen: str, retrieval: Retrieval
+) -> dict:
+    return {
+        "input_messages": Client._to_langchain_messages(chat_request),
+        "pgn": chat_request.pgn,
+        "fen": fen,
+        "ply": 0,
+        "retrieved_docs": retrieval.docs,
+        "retrieval_plies_back": retrieval.plies_back,
+        "retrieval_moves_since": retrieval.moves_since,
+    }
 
 
 async def test_completed_stream_records_tools_timing_and_outcome(client, monkeypatch):
@@ -126,9 +143,9 @@ def test_record_request_captures_question_position_and_retrieval():
     )
 
     Client._record_request(
-        chat_request,
-        STARTING_FEN,
-        retrieval=exact_retrieval([opening_doc()]),
+        request_state(
+            chat_request, STARTING_FEN, exact_retrieval([opening_doc()])
+        ),
         bundle=build_bundle([]),
     )
 
@@ -146,9 +163,7 @@ def test_record_request_marks_a_retrieval_miss():
     event = start_event()
 
     Client._record_request(
-        ChatRequest(messages=[]),
-        STARTING_FEN,
-        retrieval=exact_retrieval([]),
+        request_state(ChatRequest(messages=[]), STARTING_FEN, exact_retrieval([])),
         bundle=build_bundle([]),
     )
 
@@ -162,10 +177,12 @@ def test_record_request_records_how_far_back_the_docs_came_from():
     event = start_event()
 
     Client._record_request(
-        ChatRequest(messages=[]),
-        STARTING_FEN,
-        retrieval=Retrieval(
-            docs=[opening_doc()], plies_back=2, moves_since=("Nf3", "Nc6")
+        request_state(
+            ChatRequest(messages=[]),
+            STARTING_FEN,
+            Retrieval(
+                docs=[opening_doc()], plies_back=2, moves_since=("Nf3", "Nc6")
+            ),
         ),
         bundle=build_bundle([]),
     )
@@ -181,9 +198,7 @@ def test_record_request_stamps_what_is_answering():
     bundle = build_bundle([])
 
     Client._record_request(
-        ChatRequest(messages=[]),
-        STARTING_FEN,
-        retrieval=exact_retrieval([]),
+        request_state(ChatRequest(messages=[]), STARTING_FEN, exact_retrieval([])),
         bundle=bundle,
     )
 

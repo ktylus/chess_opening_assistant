@@ -24,7 +24,6 @@ from backend.agent.tools import (
     make_stockfish_eval_tool,
 )
 from backend.agent.workflow import WorkflowState, build_workflow, retrieval_from_state
-from backend.chess_utils.board_state import get_ply_from_fen
 from backend.chess_utils.position_profile import build_profile, profile_to_text
 from backend.observability import (
     Outcome,
@@ -73,6 +72,20 @@ class Client:
         load_dotenv()
         self.model = init_chat_model(model=MODEL, model_provider=MODEL_PROVIDER)
         self.checkpointer = InMemorySaver()
+        agent_tools = self._make_agent_tools()
+        self.status_messages = {
+            agent_tool.tool.name: agent_tool.status_message
+            for agent_tool in agent_tools
+        }
+        tools = [agent_tool.tool for agent_tool in agent_tools]
+        self.bundle = build_bundle(tools)
+        self.agent = build_workflow(
+            self.model,
+            self.bundle,
+            tools,
+            checkpointer=self.checkpointer,
+            on_retrieval=lambda state: self._record_request(state, self.bundle),
+        )
 
     @staticmethod
     def _make_agent_tools() -> list:
@@ -84,41 +97,20 @@ class Client:
 
     def prompt_bundle(self) -> PromptBundle:
         """Return the active prompt bundle (prompt text + tool descriptions)."""
-        tools = [at.tool for at in self._make_agent_tools()]
-        return build_bundle(tools)
+        return self.bundle
 
     def _prepare(self, chat_request: ChatRequest) -> PreparedRun:
-        agent_tools = self._make_agent_tools()
-        status_messages = {at.tool.name: at.status_message for at in agent_tools}
-        tools = [at.tool for at in agent_tools]
-        bundle = build_bundle(tools)
         initial_state = {
             "input_messages": self._to_langchain_messages(chat_request),
             "agent_messages": [],
             "pgn": chat_request.pgn,
         }
-
-        def record_retrieval(state: WorkflowState) -> None:
-            self._record_request(
-                chat_request,
-                state["fen"],
-                retrieval_from_state(state),
-                bundle,
-            )
-
-        agent = build_workflow(
-            self.model,
-            bundle,
-            tools,
-            checkpointer=self.checkpointer,
-            on_retrieval=record_retrieval,
-        )
         config = {
             "configurable": {
                 "thread_id": chat_request.conversation_id or str(uuid.uuid4())
             },
             "metadata": {
-                "prompt_version": bundle.version,
+                "prompt_version": self.bundle.version,
                 "model": MODEL,
                 "git_sha": git_sha(),
                 "request_id": get_request_id(),
@@ -126,17 +118,15 @@ class Client:
             }
         }
         return PreparedRun(
-            agent=agent,
+            agent=self.agent,
             messages=initial_state,
             config=config,
-            status_messages=status_messages,
+            status_messages=self.status_messages,
         )
 
     @staticmethod
     def _record_request(
-        chat_request: ChatRequest,
-        fen: str,
-        retrieval: Retrieval,
+        state: WorkflowState,
         bundle: PromptBundle,
     ) -> None:
         """Note what the incoming request asked about, and what is answering it,
@@ -145,18 +135,20 @@ class Client:
         event.prompt_version = bundle.version
         event.model = MODEL
         event.git_sha = git_sha()
-        event.turn = len(chat_request.messages)
+        input_messages = state["input_messages"]
+        event.turn = len(input_messages)
         event.question = next(
             (
                 message.content
-                for message in reversed(chat_request.messages)
-                if message.role == MessageRole.USER
+                for message in reversed(input_messages)
+                if isinstance(message, HumanMessage)
             ),
             None,
         )
-        event.pgn = chat_request.pgn
-        event.fen = fen
-        event.ply = get_ply_from_fen(fen)
+        event.pgn = state["pgn"]
+        event.fen = state["fen"]
+        event.ply = state["ply"]
+        retrieval = retrieval_from_state(state)
         event.docs_hit = bool(retrieval.docs)
         event.docs_count = len(retrieval.docs)
         event.docs_plies_back = retrieval.plies_back if retrieval.docs else None
