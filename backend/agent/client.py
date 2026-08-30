@@ -1,30 +1,29 @@
 import asyncio
 import logging
 import time
+import uuid
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
-from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import (
     AIMessage,
     AIMessageChunk,
     BaseMessage,
     HumanMessage,
-    SystemMessage,
     ToolMessage,
 )
+from langgraph.checkpoint.memory import InMemorySaver
 
 from backend.agent.chat_models import ChatRequest, MessageRole
 from backend.agent.prompt_bundle import PromptBundle, build_bundle
 from backend.agent.tools import (
     Retrieval,
-    format_opening_docs,
     make_lichess_masters_opening_explorer_tool,
     make_stockfish_eval_tool,
-    retrieve_opening_docs,
 )
+from backend.agent.workflow import WorkflowState, build_workflow, retrieval_from_state
 from backend.chess_utils.board_state import get_fen_from_pgn, get_ply_from_fen
 from backend.chess_utils.position_profile import build_profile, profile_to_text
 from backend.observability import (
@@ -54,7 +53,9 @@ class PreparedRun:
     messages: dict
     config: dict
     status_messages: dict[str, str]
-    retrieved_docs: str
+    # Kept for compatibility with tests and callers constructing PreparedRun;
+    # graph runs now surface retrieved documents in their final state.
+    retrieved_docs: str = ""
 
 
 @dataclass
@@ -71,6 +72,7 @@ class Client:
     def __init__(self):
         load_dotenv()
         self.model = init_chat_model(model=MODEL, model_provider=MODEL_PROVIDER)
+        self.checkpointer = InMemorySaver()
 
     @staticmethod
     def _make_agent_tools(fen: str) -> list:
@@ -91,24 +93,31 @@ class Client:
         status_messages = {at.tool.name: at.status_message for at in agent_tools}
         tools = [at.tool for at in agent_tools]
         bundle = build_bundle(tools)
-        agent = create_agent(self.model, tools=tools)
-        position_context = (
-            bundle.position_context_template.format(pgn=chat_request.pgn)
-            if chat_request.pgn
-            else ""
-        )
-        system_message = SystemMessage(bundle.system_prompt + position_context)
-        retrieval = retrieve_opening_docs(chat_request.pgn)
-        formatted_retrieved_docs = format_opening_docs(retrieval.docs)
-        conversation = self._inject_position_context(
-            self._to_langchain_messages(chat_request),
-            chat_request.pgn,
-            retrieval,
-            formatted_retrieved_docs,
+        initial_state = {
+            "input_messages": self._to_langchain_messages(chat_request),
+            "agent_messages": [],
+            "pgn": chat_request.pgn,
+        }
+
+        def record_retrieval(state: WorkflowState) -> None:
+            self._record_request(
+                chat_request,
+                state["fen"],
+                retrieval_from_state(state),
+                bundle,
+            )
+
+        agent = build_workflow(
+            self.model,
             bundle,
+            tools,
+            checkpointer=self.checkpointer,
+            on_retrieval=record_retrieval,
         )
-        messages = {"messages": [system_message] + conversation}
         config = {
+            "configurable": {
+                "thread_id": chat_request.conversation_id or str(uuid.uuid4())
+            },
             "metadata": {
                 "prompt_version": bundle.version,
                 "model": MODEL,
@@ -117,13 +126,11 @@ class Client:
                 "conversation_id": get_conversation_id(),
             }
         }
-        self._record_request(chat_request, fen, retrieval, bundle)
         return PreparedRun(
             agent=agent,
-            messages=messages,
+            messages=initial_state,
             config=config,
             status_messages=status_messages,
-            retrieved_docs=formatted_retrieved_docs,
         )
 
     @staticmethod
@@ -160,7 +167,7 @@ class Client:
         called, and the contexts that grounded the answer."""
         prepared = self._prepare(chat_request)
         result = await prepared.agent.ainvoke(prepared.messages, config=prepared.config)  # type: ignore
-        out_messages = result["messages"]
+        out_messages = result["agent_messages"]
 
         tool_calls = [
             call["name"]
@@ -170,8 +177,9 @@ class Client:
         ]
         # Grounding = position-driven retrieval + whatever the tools returned.
         contexts: list[str] = []
-        if prepared.retrieved_docs:
-            contexts.append(prepared.retrieved_docs)
+        formatted_docs = result.get("formatted_docs", "")
+        if formatted_docs:
+            contexts.append(formatted_docs)
         contexts.extend(
             _message_text(msg.content)
             for msg in out_messages
@@ -216,7 +224,7 @@ class Client:
                 messages, config=config, stream_mode="messages"
             ):  # type: ignore
                 msg = chunk[0]  # type: ignore
-                if isinstance(msg, AIMessageChunk):
+                if isinstance(msg, (AIMessageChunk, AIMessage)):
                     text = _message_text(msg.content)
                     if text and event.ttft_ms is None:
                         event.ttft_ms = _elapsed_ms(started)
