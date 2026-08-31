@@ -117,7 +117,7 @@ class Client:
                 "git_sha": git_sha(),
                 "request_id": get_request_id(),
                 "conversation_id": get_conversation_id(),
-            }
+            },
         }
         return PreparedRun(
             agent=self.agent,

@@ -57,7 +57,9 @@ class RedisCache:
             value = self._client.get(key)
         except Exception:
             _record(tool, "read_error")
-            logger.warning("cache_read_failed", extra={"cache_tool": tool}, exc_info=True)
+            logger.warning(
+                "cache_read_failed", extra={"cache_tool": tool}, exc_info=True
+            )
             return None
 
         if value is None:
@@ -72,7 +74,9 @@ class RedisCache:
             self._client.setex(key, ttl_seconds, value)
         except Exception:
             _record(tool, "write_error")
-            logger.warning("cache_write_failed", extra={"cache_tool": tool}, exc_info=True)
+            logger.warning(
+                "cache_write_failed", extra={"cache_tool": tool}, exc_info=True
+            )
 
     def close(self) -> None:
         try:

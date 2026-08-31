@@ -56,9 +56,7 @@ def create_app(
     # Mounted last because it matches every path and routes resolve in order.
     frontend_dist = Path(os.getenv("FRONTEND_DIST", "frontend/dist"))
     if frontend_dist.is_dir():
-        app.mount(
-            "/", StaticFiles(directory=frontend_dist, html=True), name="frontend"
-        )
+        app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 
     return app
 

@@ -61,9 +61,7 @@ async def collect(stream):
     return "".join([chunk async for chunk in stream])
 
 
-def request_state(
-    chat_request: ChatRequest, fen: str, retrieval: Retrieval
-) -> dict:
+def request_state(chat_request: ChatRequest, fen: str, retrieval: Retrieval) -> dict:
     return {
         "input_messages": Client._to_langchain_messages(chat_request),
         "pgn": chat_request.pgn,
@@ -143,9 +141,7 @@ def test_record_request_captures_question_position_and_retrieval():
     )
 
     Client._record_request(
-        request_state(
-            chat_request, STARTING_FEN, exact_retrieval([opening_doc()])
-        ),
+        request_state(chat_request, STARTING_FEN, exact_retrieval([opening_doc()])),
         bundle=build_bundle([]),
     )
 
@@ -180,9 +176,7 @@ def test_record_request_records_how_far_back_the_docs_came_from():
         request_state(
             ChatRequest(messages=[]),
             STARTING_FEN,
-            Retrieval(
-                docs=[opening_doc()], plies_back=2, moves_since=("Nf3", "Nc6")
-            ),
+            Retrieval(docs=[opening_doc()], plies_back=2, moves_since=("Nf3", "Nc6")),
         ),
         bundle=build_bundle([]),
     )

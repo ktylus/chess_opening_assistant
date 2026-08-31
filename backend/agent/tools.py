@@ -289,9 +289,7 @@ def make_lichess_masters_opening_explorer_tool(
                 "top_moves": LICHESS_TOP_MOVES,
             },
         )
-        cached = result_cache.get(
-            key, tool=get_lichess_masters_opening_data.name
-        )
+        cached = result_cache.get(key, tool=get_lichess_masters_opening_data.name)
         if cached is not None:
             return cached
 
