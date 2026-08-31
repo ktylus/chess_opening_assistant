@@ -23,10 +23,10 @@ https://github.com/user-attachments/assets/3e86b36f-3328-430c-9836-bd5ac295330a
 Chess positions are identified exactly by board state, so documents are matched on that rather than vector similarity - more precise than embeddings for a domain indexed by exact notation. Utilizing a set of ~300 annotated opening lines.
 - **Scope boundary to control hallucination.**
 The agent answers only within opening sequences (an 8-move limit, potentially deeper if a document is available) and declines otherwise - a deliberate decision to limit hallucination risk.
-- **Evaluation, not vibes.**
-An AI-as-judge scheme scores responses on correctness, completeness, and scope adherence against hand-written reference answers across 10 evaluation scenarios, plus per-example tool-use assertions - all tracked in LangSmith.
-- **Agentic tool use.**
-The model orchestrates Stockfish position evaluation and Lichess master-game statistics to ground its answers.
+- **Evaluation.**
+An LLM-as-judge scheme scores responses on correctness, completeness, and scope adherence against hand-written reference answers across 10 evaluation scenarios, plus per-example tool-use assertions - all tracked in LangSmith.
+- **Explicit agent workflow.**
+LangGraph orchestrates document retrieval, scope enforcement, model reasoning, and tool calling as separate nodes with deterministic routing.
 
 
 ## How it works
@@ -37,38 +37,47 @@ flowchart TD
     User -->|"1 - set up position on board"| Board["Interactive chess board"]
     Board -->|"2 - ask a question"| API["Backend"]
 
-    API --> Prep
+    API --> Retrieval
 
-    subgraph Prep["Position context - gathered automatically every turn"]
-        Profile["Position profile"]
-        Retrieval["Relevant opening theory"]
+    subgraph Workflow["LangGraph workflow"]
+        Retrieval["Retrieve relevant opening theory"]
+        Scope{"Within supported scope<br/>or exact theory available?"}
+        Agent["Agent reasons with<br/>position context"]
+        ToolCall{"Tool call requested?"}
+        Tools["Execute tools"]
+        Refuse["Return refusal"]
+
+        Retrieval --> Scope
+        Scope -->|"yes"| Agent
+        Scope -->|"no"| Refuse
+        Agent --> ToolCall
+        ToolCall -->|"yes"| Tools
+        Tools --> Agent
     end
 
     Docs[("Opening theory documents")] --> Retrieval
+    Tools --> Stockfish["Engine evaluation (Stockfish)"]
+    Tools --> Lichess["Master-game statistics (Lichess)"]
+    Tools <--> Cache[("Redis tool-result cache")]
 
-    Prep --> Agent{{"Agent - reasons within opening scope"}}
-
-    subgraph Tools["Tools the agent can consult"]
-        Stockfish["Engine evaluation (Stockfish)"]
-        Lichess["Master-game statistics (Lichess)"]
-    end
-
-    Agent <-->|"calls when useful"| Stockfish
-    Agent <-->|"calls when useful"| Lichess
-
-    Agent --> API
+    ToolCall -->|"no"| API
+    Refuse --> API
     API -->|"3 - streamed answer"| User
 
     Wiki["Opening theory source (offline preparation)"] -.->|build time| Docs
 ```
 
 Stack:
-- LangChain - LLM integration, tool use
+- LangGraph - LLM workflow orchestration - state, routing, tool calling.
+- LangSmith - evaluation logging/tracking, debugging
 - FastAPI - interacting with the agent via REST API
 - Pydantic - structured tool I/O and response schemas
-- python-chess - move validation, chess engine support, PGN parsing
-- LangSmith - evaluation logging/tracking, debugging
 - Docker Compose - running frontend and backend together, minimising setup
+- Redis - caching Stockfish and Lichess tool results in local development (not yet in production)
+- AWS - deployment with App Runner
+- Terraform - AWS infrastructure as code
+- GitHub Actions - CI/CD: testing/building, automated deployment from the main branch
+- python-chess - move validation, chess engine support, PGN parsing
 
 ### Core idea
 
@@ -129,7 +138,11 @@ Open http://localhost:5173. Stop with `Ctrl-C`, or `docker compose down` to remo
 ## Deployment
 
 The app is deployed on AWS App Runner. Images stored on AWS ECR, continuously deployed on successful Actions main branch pipeline passes. Infrastructure managed with Terraform.
-Rate limits, spending limits and alarms set up to combat attacks abusing the underlying LLM.
+Rate limits, API key spending limits and alarms set up to combat attacks abusing the underlying LLM.
+
+Deployment happens on successful pushes to the main branch, after all tests pass. CI builds an image tagged with the commit hash, pushes it to ECR - that image is then used to update the deployed app.
+
+While Redis caching is configured for local development, it is not yet there in the production environment.
 
 
 ## Data Sources
@@ -142,8 +155,4 @@ Rate limits, spending limits and alarms set up to combat attacks abusing the und
 
 ### Move validation
 
-I am planning to introduce a validation scheme ensuring that moves and variations suggested by the model are legal (consist of legal moves each step of the way). The main challenge is extracting suggested variations from LLM output accurately.
-
-### Semantic retrieval
-
-Semantic retrieval is considered as a supporting measure, but it's a challenge - retrieval relies on move variations which appear in standard algebraic notation. Thus, achieving high-quality retrieval would have to be done through matching concepts, ideas - something described in natural language, as opposed to chess notation.
+I am planning to introduce a validation scheme ensuring that moves and variations suggested by the model are legal (consist of legal moves each step of the way).
