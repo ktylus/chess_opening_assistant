@@ -1,6 +1,9 @@
 I'm learning - you can author code but let's work through possible approaches first. I'm willing to engage with decisions involving tradeoffs to practice.
 This is a portfolio project.
 
+For discussion, explanations - answer briefly, concisely - without going into much detail.
+Let's iterate on the discussion quicker this way. I can always ask about details myself.
+
 ### About the project
 
 This project is about creating an agent-powered LLM-based assistant which aids in learning chess openings.
