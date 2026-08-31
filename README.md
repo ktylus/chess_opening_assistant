@@ -156,3 +156,11 @@ While Redis caching is configured for local development, it is not yet there in 
 ### Move validation
 
 I am planning to introduce a validation scheme ensuring that moves and variations suggested by the model are legal (consist of legal moves each step of the way).
+
+### Eval expansion
+
+I am going to expand evaluation to more examples and change the 1-5 scale into binary pass/fail indication which is clearer.
+
+### Implement Redis in production
+
+Currently, Redis is set up only for the local development environment. I need to introduce it in production.
