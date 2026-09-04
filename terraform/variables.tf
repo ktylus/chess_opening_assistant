@@ -67,6 +67,18 @@ variable "lichess_api_key_parameter" {
   default     = "/chess-opening-assistant/lichess-api-key"
 }
 
+variable "langsmith_api_key_parameter" {
+  description = "Parameter Store path holding the LangSmith API key."
+  type        = string
+  default     = "/chess-opening-assistant/langsmith-api-key"
+}
+
+variable "langsmith_project" {
+  description = "LangSmith project that receives production traces."
+  type        = string
+  default     = "chess_opening_assistant_prod"
+}
+
 variable "log_retention_days" {
   description = "How long App Runner's log groups keep events."
   type        = number

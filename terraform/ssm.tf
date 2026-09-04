@@ -38,3 +38,17 @@ resource "aws_ssm_parameter" "lichess_api_key" {
     ignore_changes = [value]
   }
 }
+
+# LangSmith receives full agent traces from production. Keep its credential in
+# the same out-of-band secret flow as the provider keys; the project name and
+# tracing switch carry no authority and live in the App Runner configuration.
+resource "aws_ssm_parameter" "langsmith_api_key" {
+  name        = var.langsmith_api_key_parameter
+  description = "LangSmith API key used to send production traces."
+  type        = "SecureString"
+  value       = "placeholder -- replace with aws ssm put-parameter --overwrite"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}

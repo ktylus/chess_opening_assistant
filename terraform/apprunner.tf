@@ -71,6 +71,7 @@ data "aws_iam_policy_document" "read_api_keys" {
     resources = [
       aws_ssm_parameter.google_api_key.arn,
       aws_ssm_parameter.lichess_api_key.arn,
+      aws_ssm_parameter.langsmith_api_key.arn,
     ]
   }
 
@@ -130,13 +131,19 @@ resource "aws_apprunner_service" "app" {
       image_configuration {
         port = "8000"
 
+        runtime_environment_variables = {
+          LANGSMITH_TRACING = "true"
+          LANGSMITH_PROJECT = var.langsmith_project
+        }
+
         # Resolved by App Runner at instance start using the instance role, so
         # the values appear in the container's environment and nowhere else.
         # Plain runtime_environment_variables would hold them in the service
         # configuration instead, where DescribeService returns them in clear.
         runtime_environment_secrets = {
-          GOOGLE_API_KEY  = aws_ssm_parameter.google_api_key.arn
-          LICHESS_API_KEY = aws_ssm_parameter.lichess_api_key.arn
+          GOOGLE_API_KEY    = aws_ssm_parameter.google_api_key.arn
+          LICHESS_API_KEY   = aws_ssm_parameter.lichess_api_key.arn
+          LANGSMITH_API_KEY = aws_ssm_parameter.langsmith_api_key.arn
         }
       }
     }
