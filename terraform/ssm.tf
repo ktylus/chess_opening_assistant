@@ -25,6 +25,17 @@ resource "aws_ssm_parameter" "google_api_key" {
   }
 }
 
+resource "aws_ssm_parameter" "openai_api_key" {
+  name        = var.openai_api_key_parameter
+  description = "OpenAI API key used by the agent at runtime."
+  type        = "SecureString"
+  value       = "placeholder -- replace with aws ssm put-parameter --overwrite"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 # The masters explorer answers unauthenticated requests with 401, so this is
 # required despite backend/agent/tools.py treating the token as optional and
 # simply omitting the Authorization header when it is unset.

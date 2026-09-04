@@ -70,6 +70,7 @@ data "aws_iam_policy_document" "read_api_keys" {
     actions = ["ssm:GetParameters"]
     resources = [
       aws_ssm_parameter.google_api_key.arn,
+      aws_ssm_parameter.openai_api_key.arn,
       aws_ssm_parameter.lichess_api_key.arn,
       aws_ssm_parameter.langsmith_api_key.arn,
     ]
@@ -142,6 +143,7 @@ resource "aws_apprunner_service" "app" {
         # configuration instead, where DescribeService returns them in clear.
         runtime_environment_secrets = {
           GOOGLE_API_KEY    = aws_ssm_parameter.google_api_key.arn
+          OPENAI_API_KEY    = aws_ssm_parameter.openai_api_key.arn
           LICHESS_API_KEY   = aws_ssm_parameter.lichess_api_key.arn
           LANGSMITH_API_KEY = aws_ssm_parameter.langsmith_api_key.arn
         }

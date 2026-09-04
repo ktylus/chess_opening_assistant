@@ -61,6 +61,12 @@ variable "google_api_key_parameter" {
   default     = "/chess-opening-assistant/google-api-key"
 }
 
+variable "openai_api_key_parameter" {
+  description = "Parameter Store path holding the OpenAI API key."
+  type        = string
+  default     = "/chess-opening-assistant/openai-api-key"
+}
+
 variable "lichess_api_key_parameter" {
   description = "Parameter Store path holding the Lichess API token."
   type        = string
