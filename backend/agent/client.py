@@ -34,8 +34,8 @@ from backend.observability import (
 )
 from backend.observability.provenance import git_sha
 
-MODEL = "gemini-3.1-flash-lite"
-MODEL_PROVIDER = "google_genai"
+MODEL = "gpt-5.6-luna"
+MODEL_PROVIDER = "openai"
 ERROR_MESSAGE = "\n\n*Something went wrong while answering that. Please try again.*"
 
 logger = logging.getLogger("chess_opening_assistant.agent")
@@ -72,7 +72,9 @@ class Client:
     def __init__(self, cache: ToolCache | None = None):
         load_dotenv()
         self.cache = cache or NoOpCache()
-        self.model = init_chat_model(model=MODEL, model_provider=MODEL_PROVIDER)
+        self.model = init_chat_model(
+            model=MODEL, model_provider=MODEL_PROVIDER, reasoning_effort="none"
+        )
         self.checkpointer = InMemorySaver()
         agent_tools = self._make_agent_tools(self.cache)
         self.status_messages = {
