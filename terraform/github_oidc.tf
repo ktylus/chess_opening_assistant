@@ -106,7 +106,7 @@ data "aws_iam_policy_document" "apprunner_deploy" {
     sid    = "UpdateRunningImage"
     effect = "Allow"
     actions = [
-      "apprunner:DescribeService",
+      "apprunner:ListOperations",
       "apprunner:UpdateService",
     ]
     resources = [aws_apprunner_service.app.arn]

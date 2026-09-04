@@ -93,6 +93,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deploy to App Runner
+        id: deploy
         env:
           SERVICE_ARN: ${{ secrets.AWS_APPRUNNER_SERVICE_ARN }}
           ACCESS_ROLE_ARN: ${{ secrets.AWS_APPRUNNER_ACCESS_ROLE_ARN }}
@@ -101,27 +102,41 @@ jobs:
         # immutable and tagged by commit, so there is no fixed tag for App
         # Runner to watch and the deploy names the exact image instead.
         run: |
-          aws apprunner update-service \
+          operation_id="$(aws apprunner update-service \
             --service-arn "$SERVICE_ARN" \
             --source-configuration "ImageRepository={ImageIdentifier=$IMAGE,ImageRepositoryType=ECR},AuthenticationConfiguration={AccessRoleArn=$ACCESS_ROLE_ARN}" \
-            --no-cli-pager
+            --query 'OperationId' --output text \
+            --no-cli-pager)"
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "App Runner did not return a deployment operation ID" >&2
+            exit 1
+          fi
+          echo "operation_id=$operation_id" >> "$GITHUB_OUTPUT"
 
       - name: Wait for the deployment to settle
         env:
           SERVICE_ARN: ${{ secrets.AWS_APPRUNNER_SERVICE_ARN }}
+          OPERATION_ID: ${{ steps.deploy.outputs.operation_id }}
         # update-service returns as soon as the operation is accepted, so
         # without this the job goes green while the new image is still being
-        # rolled out -- and stays green if it never starts. App Runner has no
-        # CLI waiter, hence the loop.
+        # rolled out. Track that exact operation rather than Service.Status:
+        # after a failed deployment rolls back, the old service is RUNNING too.
+        # App Runner has no CLI waiter, hence the loop.
         run: |
           for _ in $(seq 60); do
-            status="$(aws apprunner describe-service \
+            status="$(aws apprunner list-operations \
               --service-arn "$SERVICE_ARN" \
-              --query 'Service.Status' --output text)"
+              --query "OperationSummaryList[?Id=='$OPERATION_ID'].Status | [0]" \
+              --output text --no-cli-pager)"
+            echo "deployment operation $OPERATION_ID: $status"
             case "$status" in
-              OPERATION_IN_PROGRESS) sleep 15 ;;
-              RUNNING) echo "deployed"; exit 0 ;;
-              *) echo "unexpected service status: $status" >&2; exit 1 ;;
+              PENDING|IN_PROGRESS|ROLLBACK_IN_PROGRESS|None) sleep 15 ;;
+              SUCCEEDED) echo "deployed"; exit 0 ;;
+              FAILED|ROLLBACK_FAILED|ROLLBACK_SUCCEEDED)
+                echo "deployment operation ended with $status" >&2
+                exit 1
+                ;;
+              *) echo "unexpected deployment status: $status" >&2; exit 1 ;;
             esac
           done
           echo "timed out waiting for the deployment" >&2
