@@ -146,6 +146,33 @@ body {
   margin: 6px 0 10px;
 }
 
+.privacy-notice {
+  color: #777;
+  font-size: 0.75rem;
+  margin: 0 20px 12px;
+  flex-shrink: 0;
+}
+
+.privacy-notice summary {
+  cursor: pointer;
+  text-align: center;
+}
+
+.privacy-notice p {
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.privacy-notice a {
+  color: #8ab48a;
+  display: inline-block;
+  margin-top: 6px;
+}
+
+.privacy-notice code {
+  overflow-wrap: anywhere;
+}
+
 .empty-hint {
   color: #555;
   font-style: italic;

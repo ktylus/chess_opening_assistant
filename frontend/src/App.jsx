@@ -99,6 +99,7 @@ export default function App() {
           messages={messages}
           onSend={handleSend}
           loading={loading}
+          conversationId={conversationId}
         />
       </main>
     </div>

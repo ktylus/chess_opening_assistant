@@ -7,7 +7,7 @@ function normalizeContent(content) {
   return content.replace(/\$([^$\n]+?)\$/g, '`$1`')
 }
 
-export default function Chat({ messages, onSend, loading }) {
+export default function Chat({ messages, onSend, loading, conversationId }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
 
@@ -57,6 +57,27 @@ export default function Chat({ messages, onSend, loading }) {
         <button type="submit" disabled={loading || !input.trim()}>Send</button>
       </form>
       <p className="board-hint">Responses are based on the position currently on the board, not on moves described in the chat.</p>
+      <details className="privacy-notice">
+        <summary>Privacy and data use</summary>
+        <p>
+          Conversation content and agent activity are sent to LangSmith and
+          retained temporarily, for no more than 30 days, so the project owner
+          can review and improve this experimental assistant. Please do not
+          include names, contact details, or other personal information.
+        </p>
+        <p>
+          No account is required. Operational logs exclude chat text and do not
+          intentionally retain IP addresses. To request deletion, open a GitHub
+          issue containing this conversation ID: <code>{conversationId}</code>.
+        </p>
+        <a
+          href="https://github.com/ktylus/chess_opening_assistant/issues/new"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Request deletion
+        </a>
+      </details>
     </div>
   )
 }
