@@ -68,6 +68,18 @@ class AgentResponse:
     model_version: str | None = None  # the weights the provider says it served
 
 
+@dataclass
+class AnswerChunk:
+    text: str
+    model_version: str | None = None
+
+
+@dataclass
+class ToolStatus:
+    tool_name: str
+    text: str
+
+
 class Client:
     def __init__(self, cache: ToolCache | None = None):
         load_dotenv()
@@ -154,10 +166,48 @@ class Client:
         event.docs_plies_back = retrieval.plies_back if retrieval.docs else None
 
     async def run(self, chat_request: ChatRequest) -> AgentResponse:
-        """Run the agent to completion, returning the answer text, the tools it
-        called, and the contexts that grounded the answer."""
+        """Consume the shared stream and return its final result."""
+        async for item in self.stream_events(chat_request):
+            if isinstance(item, AgentResponse):
+                return item
+        raise RuntimeError("Agent stream completed without a final response")
+
+    async def stream_events(
+        self, chat_request: ChatRequest
+    ) -> AsyncGenerator[AnswerChunk | ToolStatus | AgentResponse]:
+        """Yield answer text, tool statuses, then one final result.
+
+        Errors propagate to the caller; the web adapter handles presentation.
+        """
         prepared = self._prepare(chat_request)
-        result = await prepared.agent.ainvoke(prepared.messages, config=prepared.config)  # type: ignore
+        result = None
+        async for mode, payload in prepared.agent.astream(  # type: ignore
+            prepared.messages,
+            config=prepared.config,
+            stream_mode=["messages", "values"],
+        ):
+            if mode == "values":
+                result = payload
+            elif mode == "messages":
+                message, _metadata = payload
+                if isinstance(message, (AIMessageChunk, AIMessage)):
+                    yield AnswerChunk(
+                        _message_text(message.content), _model_version(message)
+                    )
+                elif isinstance(message, ToolMessage):
+                    yield ToolStatus(
+                        message.name or "unknown",
+                        prepared.status_messages.get(
+                            message.name or "", "*Using tool...*"
+                        )
+                        + "\n\n",
+                    )
+        if result is None:
+            raise RuntimeError("Agent stream completed without a final state")
+        yield self._response_from_state(result)
+
+    @staticmethod
+    def _response_from_state(result: dict) -> AgentResponse:
         out_messages = result["agent_messages"]
 
         tool_calls = [
@@ -206,26 +256,16 @@ class Client:
         event = current_event()
         started = time.perf_counter()
         try:
-            prepared = self._prepare(chat_request)
-            agent = prepared.agent
-            messages = prepared.messages
-            config = prepared.config
-            status_messages = prepared.status_messages
-            async for chunk in agent.astream(  # type: ignore
-                messages, config=config, stream_mode="messages"
-            ):  # type: ignore
-                msg = chunk[0]  # type: ignore
-                if isinstance(msg, (AIMessageChunk, AIMessage)):
-                    text = _message_text(msg.content)
-                    if text and event.ttft_ms is None:
+            async for item in self.stream_events(chat_request):
+                if isinstance(item, AnswerChunk):
+                    text = item.text
+                    if text.strip() and event.ttft_ms is None:
                         event.ttft_ms = _elapsed_ms(started)
                     if event.model_version is None:
-                        event.model_version = _model_version(msg)
-                elif isinstance(msg, ToolMessage):
-                    event.tools_called.append(msg.name or "unknown")
-                    text = (
-                        status_messages.get(msg.name or "", "*Using tool...*") + "\n\n"
-                    )
+                        event.model_version = item.model_version
+                elif isinstance(item, ToolStatus):
+                    event.tools_called.append(item.tool_name)
+                    text = item.text
                 else:
                     continue
                 if text:

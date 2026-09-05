@@ -29,9 +29,10 @@ class FakeAgent:
 
     async def astream(self, messages, config=None, stream_mode=None):
         for chunk in self.chunks:
-            yield (chunk, {})
+            yield "messages", (chunk, {})
         if self.error:
             raise self.error
+        yield "values", {"agent_messages": self.chunks}
 
 
 @pytest.fixture
