@@ -104,6 +104,8 @@ Responses are scored on the following dimensions:
 
 In addition to that, each evaluation example is labeled with the exact set of tools the agent is expected to use. Responses are graded on the tool use dimension: the agent passes only if it uses all and only those tools. Missing and unnecessary tools both result in a negative score.
 
+There is also evaluation against including retrieval references in the response. This is a binary pass/fail grade - passing when the response is free of references to retrieved documents, failing otherwise, or when it shares that no documents were retrieved.
+
 Prompts, model information and results are logged in LangSmith for experiment tracking.
 
 Known limitations:

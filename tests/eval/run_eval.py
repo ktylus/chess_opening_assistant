@@ -130,11 +130,11 @@ def make_quality_evaluator(
             {"key": "correctness", "score": score.correctness},
             {"key": "completeness", "score": score.completeness},
             {"key": "scope_adherence", "score": score.scope_adherence},
-            # {
-            #     "key": "no_retrieval_references",
-            #     "score": score.no_retrieval_references,
-            #     "comment": score.retrieval_reference_reasoning,
-            # },
+            {
+                "key": "no_retrieval_references",
+                "score": score.no_retrieval_references,
+                "comment": score.retrieval_reference_reasoning,
+            },
             {
                 "key": "quality_overall",
                 "score": score.overall,

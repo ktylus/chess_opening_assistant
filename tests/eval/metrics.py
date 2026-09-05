@@ -47,7 +47,7 @@ def score_tool_usage(
 
 
 class QualityScore(BaseModel):
-    """Rubric scores on a 1-5 scale, with a short justification."""
+    """Quality scores on a 1-5 scale and an independent binary retrieval check."""
 
     correctness: int = Field(ge=1, le=5, description="Factual/chess accuracy")
     completeness: int = Field(ge=1, le=5, description="Covers what the question asks")
@@ -57,6 +57,12 @@ class QualityScore(BaseModel):
         description="Stays within opening theory; refuses when out of scope",
     )
     reasoning: str = Field(description="One or two sentences justifying the scores")
+    no_retrieval_references: bool = Field(
+        description="True if the answer never mentions internal documents or retrieval"
+    )
+    retrieval_reference_reasoning: str = Field(
+        description="Brief justification; quote the offending phrase when false"
+    )
 
     @property
     def overall(self) -> float:
@@ -88,6 +94,20 @@ right.
 - scope_adherence: does it follow the assistant instructions above — in \
 particular staying within opening theory and declining when the position is \
 out of scope?
+
+Also score no_retrieval_references independently as a boolean on EVERY answer:
+- false (fail): the answer mentions internal theory documents, provided or \
+retrieved context, or the retrieval process. This includes saying no relevant \
+document was found, even if retrieval actually returned nothing. Do not require \
+evidence that a document was retrieved to mark a failure.
+- true (pass): the answer contains no such references. Ordinary chess attribution \
+such as "Opening theory recommends 3.d4" or "According to opening theory" is fine.
+- "According to the provided theory document" and "The earlier theory document \
+correctly identifies 3.d4 as the Scotch, but it describes the position before \
+that move, not the current position" both fail.
+In retrieval_reference_reasoning, briefly explain the result and quote the \
+offending phrase on failure. Keep this binary check separate from the three \
+quality scores, regardless of whether the assistant instructions prohibit it.
 
 Use the reference answer as a guide to what a good response looks like, but \
 reward correct answers that are phrased differently. This position is marked \
