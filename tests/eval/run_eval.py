@@ -49,7 +49,7 @@ from tests.eval.sync import DATASET_NAME, sync_dataset
 # ``judge_is_agent_model`` rather than left for a reader to infer from two ids
 # that happen to match, and it is why absolute scores here mean less than the
 # movement between runs.
-JUDGE_MODEL = "gemini-3.1-flash-lite"
+JUDGE_MODEL = "gemini-3.8-flash"
 JUDGE_PROVIDER = "google_genai"
 
 
@@ -130,6 +130,11 @@ def make_quality_evaluator(
             {"key": "correctness", "score": score.correctness},
             {"key": "completeness", "score": score.completeness},
             {"key": "scope_adherence", "score": score.scope_adherence},
+            # {
+            #     "key": "no_retrieval_references",
+            #     "score": score.no_retrieval_references,
+            #     "comment": score.retrieval_reference_reasoning,
+            # },
             {
                 "key": "quality_overall",
                 "score": score.overall,
