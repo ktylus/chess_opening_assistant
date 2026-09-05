@@ -25,6 +25,7 @@ days. Requires ``LANGSMITH_TRACING=true`` and an API key.
 """
 
 import asyncio
+import time
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
@@ -32,7 +33,7 @@ from langchain_core.language_models import BaseChatModel
 from langsmith import aevaluate
 
 from backend.agent.chat_models import ChatRequest, Message, MessageRole
-from backend.agent.client import MODEL, Client
+from backend.agent.client import MODEL, AgentResponse, AnswerChunk, Client
 from backend.agent.tools import tool_config
 from backend.observability.provenance import git_sha, is_dirty
 from tests.eval.dataset import dataset_version
@@ -60,18 +61,39 @@ def make_judge(model: str = JUDGE_MODEL) -> BaseChatModel:
 def make_target(client: Client):
     """The system under test: maps a dataset example's inputs to the agent's
     output. Runs under the experiment's trace, so the assembled system prompt,
-    injected context and tool calls are all inspectable per example."""
+    injected context and tool calls are all inspectable per example.
+
+    First-text latency includes preparation and preceding retrieval/tool delays.
+    It measures server-side text availability, not browser delivery.
+    first_text_ms is converted to first_text_seconds feedback so its column
+    does not depend on the UI loading the full run output.
+    """
 
     async def run_agent(inputs: dict) -> dict:
+        started = time.perf_counter()
+        first_text_ms = None
+
         request = ChatRequest(
             messages=[Message(role=MessageRole.USER, content=inputs["question"])],
             pgn=inputs.get("pgn", ""),
         )
-        response = await client.run(request)
+        response = None
+        async for item in client.stream_events(request):
+            if (
+                isinstance(item, AnswerChunk)
+                and item.text.strip()
+                and first_text_ms is None
+            ):
+                first_text_ms = round((time.perf_counter() - started) * 1000)
+            elif isinstance(item, AgentResponse):
+                response = item
+        if response is None:
+            raise RuntimeError("Agent stream completed without a final response")
         return {
             "answer": response.text,
             "tool_calls": response.tool_calls,
             "contexts": response.contexts,
+            "first_text_ms": first_text_ms,
             # Per-example, not run-level: the alias in the run metadata names a
             # policy, and the provider is free to serve different weights under
             # it -- in principle between one example and the next.
@@ -79,6 +101,20 @@ def make_target(client: Client):
         }
 
     return run_agent
+
+
+def first_text_evaluator(outputs: dict) -> dict:
+    """Report measured seconds; leave the score unset if no text appeared."""
+    elapsed = outputs["first_text_ms"]
+    return {
+        "key": "first_text_seconds",
+        "score": elapsed / 1000 if elapsed is not None else None,
+        "comment": (
+            "No answer text appeared."
+            if elapsed is None
+            else "Seconds to first nonblank assistant text; lower is better."
+        ),
+    }
 
 
 def tool_usage_evaluator(outputs: dict, reference_outputs: dict) -> dict:
@@ -202,6 +238,7 @@ async def main() -> None:
         make_target(client),
         data=DATASET_NAME,
         evaluators=[
+            first_text_evaluator,
             tool_usage_evaluator,
             make_quality_evaluator(judge, agent_system_prompt, available_tools),  # type: ignore
         ],
