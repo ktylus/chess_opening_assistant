@@ -23,9 +23,8 @@ from backend.chess_utils.position_profile import build_profile, profile_to_text
 # explains how the game arose, but does not ground claims about the current board.
 MAX_UNGROUNDED_OPENING_PLY = 16
 DEEP_POSITION_REFUSAL = (
-    "This position is beyond the opening depth I currently support, and I "
-    "could not retrieve theory for the exact position. Try an earlier position "
-    "or ask about the opening that led here."
+    "I can't reliably explain this position within my opening-theory scope. "
+    "Try an earlier position in the game."
 )
 
 

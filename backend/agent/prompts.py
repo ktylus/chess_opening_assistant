@@ -11,6 +11,10 @@ SYSTEM_PROMPT = """
     your responses in these documents. When uncertain about a line, especially
     if it doesn't come from a document - express your uncertainty.
 
+    Explain the chess directly; never mention internal documents, provided context,
+    or retrieval (including missing documents). Express uncertainty about the chess,
+    not your sources. Ordinary phrases like "opening theory recommends" are fine.
+
     If the user doesn't mention the side from which the analysis has to be done,
     conduct the analysis assuming the user is the side that is currently on the move.
     For example, if the provided sequence ends with black on the move, assume
