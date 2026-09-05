@@ -46,7 +46,9 @@ def create_app(
 
     @app.post("/chat")
     async def chat(chat_request: ChatRequest, request: Request):
-        bind_conversation(chat_request.conversation_id)
+        bind_conversation(
+            str(chat_request.conversation_id) if chat_request.conversation_id else None
+        )
         client: Client = request.app.state.client
         return StreamingResponse(client.stream(chat_request), media_type="text/plain")
 

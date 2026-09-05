@@ -1,4 +1,5 @@
 from enum import Enum
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -25,4 +26,6 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[Message] = Field(max_length=MAX_MESSAGES)
     pgn: str = Field(default="", max_length=MAX_PGN_CHARS)
-    conversation_id: str | None = None
+    # A UUID is enough to correlate anonymous turns without accepting arbitrary
+    # user-controlled text into logs and tracing metadata.
+    conversation_id: UUID | None = None

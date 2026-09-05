@@ -111,7 +111,11 @@ class Client:
         }
         config = {
             "configurable": {
-                "thread_id": chat_request.conversation_id or str(uuid.uuid4())
+                "thread_id": (
+                    str(chat_request.conversation_id)
+                    if chat_request.conversation_id
+                    else str(uuid.uuid4())
+                )
             },
             "metadata": {
                 "prompt_version": self.bundle.version,
@@ -141,14 +145,6 @@ class Client:
         event.git_sha = git_sha()
         input_messages = state["input_messages"]
         event.turn = len(input_messages)
-        event.question = next(
-            (
-                message.content
-                for message in reversed(input_messages)
-                if isinstance(message, HumanMessage)
-            ),
-            None,
-        )
         event.pgn = state["pgn"]
         event.fen = state["fen"]
         event.ply = state["ply"]

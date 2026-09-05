@@ -64,7 +64,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 "rate_limited",
                 extra={
                     "event": {
-                        "client": client,
                         "path": request.url.path,
                         "retry_after_s": retry_after,
                     }

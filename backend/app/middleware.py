@@ -15,12 +15,13 @@ logger = logging.getLogger("chess_opening_assistant.http")
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Give every request an identifier and an event to accumulate into.
 
-    The identifier is taken from the ``X-Request-ID`` header when a caller or
-    proxy supplied one, and is echoed back on the response.
+    The server owns the identifier and echoes it back on the response. Inbound
+    values are not trusted because this is a public endpoint and identifiers
+    are written to logs and tracing metadata.
     """
 
     async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get(REQUEST_ID_HEADER) or new_request_id()
+        request_id = new_request_id()
         bind_request(request_id)
         start_event()
 

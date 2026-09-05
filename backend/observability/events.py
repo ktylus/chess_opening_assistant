@@ -32,7 +32,6 @@ class ChatEvent:
     git_sha: str | None = None
     # What was asked:
     turn: int | None = None
-    question: str | None = None
     pgn: str | None = None
     fen: str | None = None
     ply: int | None = None

@@ -37,11 +37,11 @@ def test_request_id_is_minted_and_echoed_back(test_client):
     assert response.json()["request_id"] == request_id
 
 
-def test_inbound_request_id_is_honoured(test_client):
+def test_inbound_request_id_is_replaced(test_client):
     response = test_client.get("/echo", headers={REQUEST_ID_HEADER: "from-proxy"})
 
-    assert response.headers[REQUEST_ID_HEADER] == "from-proxy"
-    assert response.json()["request_id"] == "from-proxy"
+    assert response.headers[REQUEST_ID_HEADER] != "from-proxy"
+    assert response.json()["request_id"] == response.headers[REQUEST_ID_HEADER]
 
 
 def test_each_request_gets_its_own_id(test_client):

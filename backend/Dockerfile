@@ -132,4 +132,4 @@ EXPOSE 8000
 # without them the app sees the proxy's address and http:// for every request.
 # Trusting any peer is safe here because only the platform can reach the port.
 CMD ["uvicorn", "backend.app.app:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips", "*"]
+     "--proxy-headers", "--forwarded-allow-ips", "*", "--no-access-log"]

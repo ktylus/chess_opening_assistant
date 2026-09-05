@@ -129,7 +129,7 @@ async def test_client_disconnect_is_recorded_and_propagates(client, monkeypatch)
     assert event.chars_streamed == len("Partial")
 
 
-def test_record_request_captures_question_position_and_retrieval():
+def test_record_request_captures_position_and_retrieval_without_chat_content():
     event = start_event()
     chat_request = ChatRequest(
         messages=[
@@ -146,7 +146,7 @@ def test_record_request_captures_question_position_and_retrieval():
     )
 
     assert event.turn == 3
-    assert event.question == "And the pawn breaks?"  # the latest one, not the first
+    assert not hasattr(event, "question")
     assert event.pgn == RUY_LOPEZ_PGN
     assert event.fen == STARTING_FEN
     assert event.ply == 0
@@ -166,7 +166,6 @@ def test_record_request_marks_a_retrieval_miss():
     assert event.docs_hit is False
     assert event.docs_count == 0
     assert event.docs_plies_back is None
-    assert event.question is None
 
 
 def test_record_request_records_how_far_back_the_docs_came_from():
