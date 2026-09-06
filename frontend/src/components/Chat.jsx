@@ -66,6 +66,12 @@ export default function Chat({ messages, onSend, loading, conversationId }) {
           include names, contact details, or other personal information.
         </p>
         <p>
+          When you ask a question, we store a random ID in your browser and
+          include it in operational logs to count active browsers, including
+          failed requests. It persists across visits and chat resets until you
+          clear this site's browser storage.
+        </p>
+        <p>
           No account is required. Operational logs exclude chat text and do not
           intentionally retain IP addresses. To request deletion, open a GitHub
           issue containing this conversation ID: <code>{conversationId}</code>.

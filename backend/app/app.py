@@ -33,11 +33,10 @@ def create_app(
             cache.close()
 
     app = FastAPI(lifespan=lifespan)
-    app.add_middleware(RequestContextMiddleware)
-    # Added last, so it wraps everything else and a refused request costs as
-    # little as possible. Only /chat is limited: /health is polled by the
-    # platform, and a single page load pulls down many static assets.
+    # Only /chat is limited. Request logging wraps the limiter so rejected
+    # submissions still count as activity, without reading their bodies.
     app.add_middleware(RateLimitMiddleware, paths={"/chat"})
+    app.add_middleware(RequestContextMiddleware)
 
     @app.get("/health")
     async def health():

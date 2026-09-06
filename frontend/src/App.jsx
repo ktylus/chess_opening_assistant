@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Chess } from 'chess.js'
 import Board from './components/Board'
 import Chat from './components/Chat'
+import { getBrowserId } from './browserId'
 
 export default function App() {
   const [moves, setMoves] = useState([])
@@ -47,7 +48,10 @@ export default function App() {
     try {
       const res = await fetch('/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Browser-ID': getBrowserId(),
+        },
         body: JSON.stringify({
           messages: nextMessages,
           pgn: currentPgn,

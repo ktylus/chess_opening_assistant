@@ -147,6 +147,34 @@ Deployment happens on successful pushes to the main branch, after all tests pass
 While Redis caching is configured for local development, it is not yet there in the production environment.
 
 
+### Counting active browsers
+
+On question submission, the frontend persists a random UUID in `localStorage`
+and sends it as `X-Browser-ID`. The backend writes a `question_submitted` JSON
+event with `browser_id` before validation, rate limiting, or assistant execution.
+Failed submissions count; page views do not. Requests that never reach the app
+cannot be counted. Missing or invalid IDs are omitted from logs and unique counts.
+
+After deploying this change, select the App Runner **application** log group and
+the desired time range in CloudWatch Logs Insights, then run:
+
+```sql
+filter message = "question_submitted" and ispresent(browser_id)
+| stats count_distinct(browser_id) as active_browsers, count(*) as submissions
+```
+
+For daily activity, add `by bin(1d)` to the `stats` line. Unique counts apply to
+the selected period; do not sum daily uniques to calculate monthly users.
+[AWS documents](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax-Stats.html)
+that `count_distinct` can be approximate at high cardinality.
+
+This measures browser profiles, not people: clearing storage or using another
+browser creates another identity. If storage is blocked, the ID lasts only for
+the current page. IDs are client-controlled, so bots can distort the counts;
+they are never used for authentication or rate limiting. Counts cover only
+retained logs. Chat resets preserve the browser ID. The frontend privacy notice
+discloses this usage tracking.
+
 ## Data Sources
 
 - The opening document set was retrieved from the [Wikibooks Chess Opening Theory Book](https://en.wikibooks.org/wiki/Category:Book:Chess_Opening_Theory). (selected articles)

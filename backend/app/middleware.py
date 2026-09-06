@@ -1,6 +1,7 @@
 """HTTP-level wiring for request logging."""
 
 import logging
+from uuid import UUID
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,6 +25,18 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = new_request_id()
         bind_request(request_id)
         start_event()
+
+        if request.method == "POST" and request.url.path == "/chat":
+            # Analytics only: never use this client-controlled ID for trust or
+            # rate limiting. Validate before persisting any header content.
+            try:
+                browser_id = str(UUID(request.headers.get("X-Browser-ID", "")))
+            except ValueError:
+                browser_id = None
+            logger.info(
+                "question_submitted",
+                extra={"event": {"browser_id": browser_id}},
+            )
 
         logger.debug(
             "request_started",
