@@ -16,7 +16,6 @@ from backend.agent.doc_models import OpeningDoc
 from backend.agent.prompt_bundle import PromptBundle
 from backend.agent.tools import Retrieval, format_opening_docs, retrieve_opening_docs
 from backend.chess_utils.board_state import get_fen_from_pgn, get_ply_from_fen
-from backend.chess_utils.position_profile import build_profile, profile_to_text
 
 # Positions after eight full moves are outside the ungrounded opening scope.
 # Exact theory for the board position is the only exception; ancestor theory
@@ -36,7 +35,6 @@ class WorkflowState(TypedDict):
     pgn: str
     fen: str
     ply: int
-    position_profile: str
     retrieved_docs: list[OpeningDoc]
     formatted_docs: str
     retrieval_plies_back: int
@@ -60,7 +58,6 @@ def prepare_position(state: WorkflowState) -> dict:
     return {
         "fen": fen,
         "ply": get_ply_from_fen(fen),
-        "position_profile": profile_to_text(build_profile(state["pgn"])),
         # A fresh request starts a fresh agent loop even when its thread already
         # has checkpoints. Conversation history remains client-provided for now.
         "agent_messages": [],
@@ -94,9 +91,7 @@ def refuse_position(state: WorkflowState) -> dict:
 
 
 def _position_context(state: WorkflowState, bundle: PromptBundle) -> list[BaseMessage]:
-    context: list[BaseMessage] = [
-        HumanMessage(bundle.profile_preamble.format(profile=state["position_profile"]))
-    ]
+    context: list[BaseMessage] = []
     docs = state["formatted_docs"]
     if docs and state["retrieval_is_exact"]:
         context.append(HumanMessage(bundle.docs_preamble.format(docs=docs)))

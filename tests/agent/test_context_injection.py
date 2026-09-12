@@ -12,7 +12,6 @@ from backend.agent.prompt_bundle import PromptBundle, _version_hash, build_bundl
 from backend.agent.tools import Retrieval
 from tests.agent.factories import opening_doc
 
-PGN = "1. b4 e5 2. Bb2"
 DOCS = "[Document 1: Polish Opening]\n1. b4 grabs queenside space."
 
 
@@ -21,7 +20,7 @@ def inject(retrieval: Retrieval, docs: str, bundle: PromptBundle | None = None):
     context messages."""
     bundle = bundle or build_bundle([])
     messages = Client._inject_position_context(
-        [HumanMessage("What is going on here?")], PGN, retrieval, docs, bundle
+        [HumanMessage("What is going on here?")], retrieval, docs, bundle
     )
     return [m.content for m in messages[:-1]]
 

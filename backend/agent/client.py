@@ -25,7 +25,6 @@ from backend.agent.tools import (
 )
 from backend.agent.workflow import WorkflowState, build_workflow, retrieval_from_state
 from backend.cache import NoOpCache, ToolCache
-from backend.chess_utils.position_profile import build_profile, profile_to_text
 from backend.observability import (
     Outcome,
     current_event,
@@ -291,13 +290,11 @@ class Client:
     @staticmethod
     def _inject_position_context(
         messages: list[BaseMessage],
-        pgn: str,
         retrieval: Retrieval,
         docs: str,
         bundle: PromptBundle,
     ) -> list[BaseMessage]:
-        """Insert current-position context (a position profile, then any
-        retrieved opening theory) just before the latest user message.
+        """Insert retrieved opening theory just before the latest user message.
 
         Theory retrieved for an earlier position is labelled as such, so it is
         not read as a description of the position on the board.
@@ -305,13 +302,7 @@ class Client:
         if not messages:
             return messages
 
-        context = [
-            HumanMessage(
-                bundle.profile_preamble.format(
-                    profile=profile_to_text(build_profile(pgn))
-                )
-            )
-        ]
+        context: list[BaseMessage] = []
 
         if docs and retrieval.is_exact:
             context.append(HumanMessage(bundle.docs_preamble.format(docs=docs)))

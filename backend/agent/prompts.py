@@ -47,10 +47,6 @@ SYSTEM_PROMPT = """
 
 POSITION_CONTEXT_TEMPLATE = "\n\nCurrent position (PGN): {pgn}"
 
-PROFILE_PREAMBLE = (
-    "Structured profile of the position currently on the board:\n\n{profile}"
-)
-
 DOCS_PREAMBLE = (
     "Relevant opening theory for the position currently on the board:\n\n"
     "{docs}\n\n"
