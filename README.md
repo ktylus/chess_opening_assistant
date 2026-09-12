@@ -6,7 +6,7 @@ An agentic assistant helping beginners and intermediate chess players explore id
 
 LLMs are notoriously weak at calculating chess, so this assistant uses large volumes of absorbed commentary to explain ideas behind opening lines.
 
-**[Try it yourself](https://mnwjhbdxsk.eu-central-1.awsapprunner.com/)**
+**[Try it yourself](https://chess.kamiltylus.com/)**
 
 The service might be paused at times to keep the costs limited.
 If it's down, the demo below covers basic usage.
